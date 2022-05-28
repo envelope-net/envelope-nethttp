@@ -7,13 +7,14 @@ using System.Diagnostics;
 namespace Envelope.NetHttp;
 
 /// <inheritdoc />
-internal class LogHandler<TOptions> : DelegatingHandler
+internal class LogHandler<TOptions, TIdentity> : DelegatingHandler
 	where TOptions : HttpApiClientOptions
+	where TIdentity : struct
 {
 	private readonly TOptions _options;
 	private readonly ILogger _errorLogger;
 
-	public LogHandler(IOptions<TOptions> options, ILogger<LogHandler<TOptions>> errorLogger)
+	public LogHandler(IOptions<TOptions> options, ILogger<LogHandler<TOptions, TIdentity>> errorLogger)
 	{
 		_options = options?.Value ?? throw new ArgumentNullException(nameof(options));
 		_errorLogger = errorLogger ?? throw new ArgumentNullException(nameof(errorLogger));
@@ -45,7 +46,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStringAsync)}"), true);
+					_errorLogger.LogErrorMessage<TIdentity>(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions, TIdentity>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStringAsync)}"), true);
 				}
 			}
 
@@ -66,7 +67,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsByteArrayAsync)}"), true);
+					_errorLogger.LogErrorMessage<TIdentity>(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions, TIdentity>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsByteArrayAsync)}"), true);
 				}
 			}
 
@@ -87,7 +88,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStreamAsync)}"), true);
+					_errorLogger.LogErrorMessage<TIdentity>(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions, TIdentity>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStreamAsync)}"), true);
 				}
 			}
 
@@ -117,7 +118,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStringAsync)}"), true);
+					_errorLogger.LogErrorMessage<TIdentity>(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions, TIdentity>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStringAsync)}"), true);
 				}
 			}
 
@@ -138,7 +139,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsByteArrayAsync)}"), true);
+					_errorLogger.LogErrorMessage<TIdentity>(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions, TIdentity>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsByteArrayAsync)}"), true);
 				}
 			}
 
@@ -159,7 +160,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStreamAsync)}"), true);
+					_errorLogger.LogErrorMessage<TIdentity>(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions, TIdentity>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStreamAsync)}"), true);
 				}
 			}
 		}
@@ -180,7 +181,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 
 		var key = _options.UriLoggers.Keys.FirstOrDefault(x => uri!.StartsWith(x));
 		if (!string.IsNullOrWhiteSpace(key) && _options.UriLoggers.TryGetValue(key, out var logger))
-				return logger;
+			return logger;
 
 		if (_options.UriLoggers.TryGetValue("*", out var defaultLogger))
 			return defaultLogger;
