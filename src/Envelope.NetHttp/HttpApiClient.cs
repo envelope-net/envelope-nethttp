@@ -7,6 +7,7 @@ using Envelope.NetHttp.Http;
 using Envelope.Trace;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Envelope.Exceptions;
 
 namespace Envelope.NetHttp;
 
@@ -23,9 +24,9 @@ public abstract class HttpApiClient
 		Options = options?.Value ?? throw new ArgumentNullException(nameof(options));
 		Logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-		var error = Options.Validate()?.ToString();
-		if (!string.IsNullOrWhiteSpace(error))
-			throw new InvalidOperationException(error);
+		var error = Options.Validate();
+		if (0 < error?.Count)
+			throw new ConfigurationException(error);
 	}
 
 	public Task<IHttpApiClientResponse> SendAsync(Action<RequestBuilder> configureRequest, CancellationToken cancellationToken = default)

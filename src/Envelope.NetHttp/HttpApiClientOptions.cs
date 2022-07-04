@@ -151,22 +151,22 @@ public abstract class HttpApiClientOptions : IValidable
 		CredentialCache.Add(new Uri(uriPrefix), authenticationType.ToString(), credential);
 	}
 
-	public StringBuilder? Validate(string? propertyPrefix = null, StringBuilder? parentErrorBuffer = null, Dictionary<string, object>? validationContext = null)
+	public List<IValidationMessage>? Validate(string? propertyPrefix = null, List<IValidationMessage>? parentErrorBuffer = null, Dictionary<string, object>? validationContext = null)
 	{
 		if (string.IsNullOrWhiteSpace(BaseAddress))
 		{
 			if (parentErrorBuffer == null)
-				parentErrorBuffer = new StringBuilder();
+				parentErrorBuffer = new List<IValidationMessage>();
 
-			parentErrorBuffer.AppendLine($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(BaseAddress))} == null");
+			parentErrorBuffer.Add(ValidationMessageFactory.Error($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(BaseAddress))} == null"));
 		}
 
 		if (Credentials != null && CredentialCache != null)
 		{
 			if (parentErrorBuffer == null)
-				parentErrorBuffer = new StringBuilder();
+				parentErrorBuffer = new List<IValidationMessage>();
 
-			parentErrorBuffer.AppendLine($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(Credentials))} != null && {StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(CredentialCache))} != null");
+			parentErrorBuffer.Add(ValidationMessageFactory.Error($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(Credentials))} != null && {StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(CredentialCache))} != null"));
 		}
 
 		return parentErrorBuffer;

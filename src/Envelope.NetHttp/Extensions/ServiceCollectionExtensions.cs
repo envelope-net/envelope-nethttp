@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Envelope.NetHttp;
+using Envelope.Exceptions;
 
 namespace Envelope.Extensions;
 
@@ -16,9 +17,9 @@ public static class ServiceCollectionExtensions
 		var options = new TOptions();
 		configureOptions?.Invoke(options);
 
-		var error = options.Validate()?.ToString();
-		if (!string.IsNullOrWhiteSpace(error))
-			throw new InvalidOperationException(error);
+		var error = options.Validate();
+		if (0 < error?.Count)
+			throw new ConfigurationException(error);
 
 		services.Configure<TOptions>(opt =>
 		{
@@ -80,9 +81,9 @@ public static class ServiceCollectionExtensions
 		var options = new TOptions();
 		configureOptions?.Invoke(options);
 
-		var error = options.Validate()?.ToString();
-		if (!string.IsNullOrWhiteSpace(error))
-			throw new InvalidOperationException(error);
+		var error = options.Validate();
+		if (0 < error?.Count)
+			throw new ConfigurationException(error);
 
 		services.Configure<TOptions>(opt =>
 		{
