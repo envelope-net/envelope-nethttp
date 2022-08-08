@@ -128,7 +128,7 @@ public abstract class HttpApiClient
 	}
 
 	protected virtual ErrorMessageBuilder? CreateErrorMessage(
-		string sourceSystemName,
+		IApplicationContext applicationContext,
 		IHttpApiClientRequest? request,
 		IHttpApiClientResponse? response,
 		[CallerMemberName] string memberName = "",
@@ -138,7 +138,7 @@ public abstract class HttpApiClient
 		if (request == null && response == null)
 			return null;
 
-		var builder = new ErrorMessageBuilder(TraceInfo.Create(null, sourceSystemName, null, memberName, sourceFilePath, sourceLineNumber));
+		var builder = new ErrorMessageBuilder(TraceInfo.Create(applicationContext, null, memberName, sourceFilePath, sourceLineNumber));
 		var sb = new StringBuilder();
 
 		if (request != null)
@@ -167,7 +167,7 @@ public abstract class HttpApiClient
 	}
 
 	protected virtual ErrorMessageBuilder? LogError(
-		string sourceSystemName,
+		IApplicationContext applicationContext,
 		IHttpApiClientRequest? request,
 		IHttpApiClientResponse? response,
 		[CallerMemberName] string memberName = "",
@@ -177,7 +177,7 @@ public abstract class HttpApiClient
 		if (request == null && response == null)
 			return null;
 
-		var errorMessageBuilder = CreateErrorMessage(sourceSystemName, request, response, memberName, sourceFilePath, sourceLineNumber);
+		var errorMessageBuilder = CreateErrorMessage(applicationContext, request, response, memberName, sourceFilePath, sourceLineNumber);
 
 		if (errorMessageBuilder == null)
 			return null;

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Envelope.Logging.Extensions;
 using Envelope.NetHttp.Http;
 using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Envelope.NetHttp;
 
@@ -11,11 +12,13 @@ internal class LogHandler<TOptions> : DelegatingHandler
 	where TOptions : HttpApiClientOptions
 {
 	private readonly TOptions _options;
+	private readonly IServiceProvider _serviceProvider;
 	private readonly ILogger _errorLogger;
 
-	public LogHandler(IOptions<TOptions> options, ILogger<LogHandler<TOptions>> errorLogger)
+	public LogHandler(IOptions<TOptions> options, IServiceProvider serviceProvider, ILogger<LogHandler<TOptions>> errorLogger)
 	{
 		_options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+		_serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 		_errorLogger = errorLogger ?? throw new ArgumentNullException(nameof(errorLogger));
 	}
 
@@ -45,7 +48,11 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStringAsync)}"), true);
+					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
+					if (applicationCoxntext != null)
+						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStringAsync)}"), true);
+					else
+						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStringAsync)}"), true);
 				}
 			}
 
@@ -66,7 +73,11 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsByteArrayAsync)}"), true);
+					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
+					if (applicationCoxntext != null)
+						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsByteArrayAsync)}"), true);
+					else
+						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsByteArrayAsync)}"), true);
 				}
 			}
 
@@ -87,7 +98,11 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStreamAsync)}"), true);
+					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
+					if (applicationCoxntext != null)
+						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStreamAsync)}"), true);
+					else
+						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStreamAsync)}"), true);
 				}
 			}
 
@@ -117,7 +132,11 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStringAsync)}"), true);
+					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
+					if (applicationCoxntext != null)
+						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStringAsync)}"), true);
+					else
+						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStringAsync)}"), true);
 				}
 			}
 
@@ -138,7 +157,11 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsByteArrayAsync)}"), true);
+					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
+					if (applicationCoxntext != null)
+						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsByteArrayAsync)}"), true);
+					else
+						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsByteArrayAsync)}"), true);
 				}
 			}
 
@@ -159,7 +182,11 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				}
 				catch (Exception ex)
 				{
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStreamAsync)}"), true);
+					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
+					if (applicationCoxntext != null)
+						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStreamAsync)}"), true);
+					else
+						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStreamAsync)}"), true);
 				}
 			}
 		}
