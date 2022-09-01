@@ -1,13 +1,27 @@
-﻿using Envelope.Web.Logging;
+﻿using Envelope.NetHttp.Http;
+using Envelope.Trace;
+using Envelope.Web.Logging;
 
 namespace Envelope.NetHttp;
 
 public interface IRequestResponseLogger
 {
-	Func<RequestDto, string?, Guid, CancellationToken, Task>? OnBeforeRequestSendAsStringAsync { get; }
-	Func<RequestDto, byte[]?, Guid, CancellationToken, Task>? OnBeforeRequestSendAsByteArrayAsync { get; }
-	Func<RequestDto, Stream?, Guid, CancellationToken, Task>? OnBeforeRequestSendAsStreamAsync { get; }
-	Func<ResponseDto, string?, Guid, CancellationToken, Task>? OnAfterResponseReceivedAsStringAsync { get; }
-	Func<ResponseDto, byte[]?, Guid, CancellationToken, Task>? OnAfterResponseReceivedAsByteArrayAsync { get; }
-	Func<ResponseDto, Stream?, Guid, CancellationToken, Task>? OnAfterResponseReceivedAsStreamAsync { get; }
+	Task<Guid?> LogRequestAsync<TOptions>(
+		RequestDto request,
+		HttpContentDto requestContent,
+		ITraceInfo traceInfo,
+		IServiceProvider serviceProvider,
+		TOptions options,
+		CancellationToken cancellationToken = default)
+		where TOptions : HttpApiClientOptions;
+
+	Task LogResponseAsync<TOptions>(
+		Guid requestIdentifier,
+		ResponseDto response,
+		HttpContentDto responseContent,
+		ITraceInfo traceInfo,
+		IServiceProvider serviceProvider,
+		TOptions options,
+		CancellationToken cancellationToken = default)
+		where TOptions : HttpApiClientOptions;
 }

@@ -4,6 +4,8 @@ using Envelope.Logging.Extensions;
 using Envelope.NetHttp.Http;
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Envelope.Extensions;
+using Envelope.Trace;
 
 namespace Envelope.NetHttp;
 
@@ -11,207 +13,176 @@ namespace Envelope.NetHttp;
 internal class LogHandler<TOptions> : DelegatingHandler
 	where TOptions : HttpApiClientOptions
 {
+#if NET6_0_OR_GREATER
+	private readonly HttpRequestOptionsKey<IServiceProvider> _serviceProviderHttpRequestOptionsKey;
+	private readonly HttpRequestOptionsKey<ITraceInfo> _traceInfoHttpRequestOptionsKey;
+#endif
+
 	private readonly TOptions _options;
-	private readonly IServiceProvider _serviceProvider;
 	private readonly ILogger _errorLogger;
 
 	public LogHandler(IOptions<TOptions> options, IServiceProvider serviceProvider, ILogger<LogHandler<TOptions>> errorLogger)
 	{
 		_options = options?.Value ?? throw new ArgumentNullException(nameof(options));
-		_serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 		_errorLogger = errorLogger ?? throw new ArgumentNullException(nameof(errorLogger));
+
+#if NET6_0_OR_GREATER
+		_serviceProviderHttpRequestOptionsKey = new(nameof(IServiceProvider));
+		_traceInfoHttpRequestOptionsKey = new(nameof(ITraceInfo));
+#endif
 	}
 
 	protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 	{
 		var uri = request.RequestUri?.ToString();
-		var correlationId = Guid.NewGuid();
 		Stopwatch? sw = null;
 
-		var logger = GetLogger(uri);
+#if NET6_0_OR_GREATER
+		if (!request.Options.TryGetValue(_serviceProviderHttpRequestOptionsKey, out IServiceProvider? serviceProvider))
+		{
+			var exception = $"{nameof(serviceProvider)} == null";
+			_errorLogger.LogErrorMessage(
+				_options.SourceSystemName,
+				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)}"),
+				true);
+
+			throw new InvalidOperationException(exception);
+		}
+
+		if (!request.Options.TryGetValue(_traceInfoHttpRequestOptionsKey, out ITraceInfo? traceInfo))
+		{
+			var exception = $"{nameof(traceInfo)} == null";
+			_errorLogger.LogErrorMessage(
+				_options.SourceSystemName,
+				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)}"),
+				true);
+
+			throw new InvalidOperationException(exception);
+		}
+#elif NETSTANDARD2_0 || NETSTANDARD2_1
+		if (!request.Properties.TryGetValue(nameof(IServiceProvider), out IServiceProvider? serviceProvider))
+		{
+			var exception = $"{nameof(serviceProvider)} == null";
+			_errorLogger.LogErrorMessage(
+				_options.SourceSystemName,
+				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)}"),
+				true);
+
+			throw new InvalidOperationException(exception);
+		}
+		
+		if (!request.Properties.TryGetValue(nameof(ITraceInfo), out ITraceInfo? traceInfo))
+		{
+			var exception = $"{nameof(traceInfo)} == null";
+			_errorLogger.LogErrorMessage(
+				_options.SourceSystemName,
+				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)}"),
+				true);
+
+			throw new InvalidOperationException(exception);
+		}
+#endif
+
+		traceInfo = TraceInfo.Create(traceInfo);
+
+		Guid? requestLogIdentifier = null;
+		var logger = _options.GetLogger(uri, serviceProvider);
 		if (logger != null)
 		{
-			if (logger.OnBeforeRequestSendAsStringAsync != null)
-			{
-				var requestDto = await RequestDtoMapper.MapAsync(request, null, null, null, true, false, false, cancellationToken).ConfigureAwait(false);
-				string? body = null;
-				if (request.Content != null)
-					body = await request.Content.ReadAsStringAsync(
-#if NET6_0_OR_GREATER
-					cancellationToken
-#endif
-					).ConfigureAwait(false);
+			var requestDto = await RequestDtoMapper.MapAsync(request, null, null, null, true, false, false, cancellationToken).ConfigureAwait(false);
+			var httpContentDto = HttpContentHelper.ParseHttpContent(request.Content);
 
-				try
-				{
-					await logger.OnBeforeRequestSendAsStringAsync.Invoke(requestDto, body, correlationId, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
-					if (applicationCoxntext != null)
-						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStringAsync)}"), true);
-					else
-						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStringAsync)}"), true);
-				}
+			try
+			{
+				requestLogIdentifier = await logger.LogRequestAsync(
+					requestDto,
+					httpContentDto,
+					traceInfo,
+					serviceProvider,
+					_options,
+					cancellationToken).ConfigureAwait(false);
 			}
-
-			if (logger.OnBeforeRequestSendAsByteArrayAsync != null)
+			catch (Exception ex)
 			{
-				var requestDto = await RequestDtoMapper.MapAsync(request, null, null, null, true, false, false, cancellationToken).ConfigureAwait(false);
-				byte[]? body = null;
-				if (request.Content != null)
-					body = await request.Content.ReadAsByteArrayAsync(
-#if NET6_0_OR_GREATER
-					cancellationToken
-#endif
-					).ConfigureAwait(false);
-
-				try
-				{
-					await logger.OnBeforeRequestSendAsByteArrayAsync.Invoke(requestDto, body, correlationId, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
-					if (applicationCoxntext != null)
-						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsByteArrayAsync)}"), true);
-					else
-						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsByteArrayAsync)}"), true);
-				}
-			}
-
-			if (logger.OnBeforeRequestSendAsStreamAsync != null)
-			{
-				var requestDto = await RequestDtoMapper.MapAsync(request, null, null, null, true, false, false, cancellationToken).ConfigureAwait(false);
-				Stream? body = null;
-				if (request.Content != null)
-					body = await request.Content.ReadAsStreamAsync(
-#if NET6_0_OR_GREATER
-					cancellationToken
-#endif
-					).ConfigureAwait(false);
-
-				try
-				{
-					await logger.OnBeforeRequestSendAsStreamAsync.Invoke(requestDto, body, correlationId, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
-					if (applicationCoxntext != null)
-						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStreamAsync)}"), true);
-					else
-						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnBeforeRequestSendAsStreamAsync)}"), true);
-				}
+				var applicationCoxntext = serviceProvider.GetService<IApplicationContext>();
+				if (applicationCoxntext != null)
+					_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogRequestAsync)}"), true);
+				else
+					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogRequestAsync)}"), true);
 			}
 
 			sw = Stopwatch.StartNew();
 		}
 
-		var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
-
-		if (logger != null)
+		HttpResponseMessage? response = null;
+		string? error = null;
+		try
 		{
-			sw?.Stop();
+			response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-			if (logger.OnAfterResponseReceivedAsStringAsync != null)
+			if (logger != null && requestLogIdentifier.HasValue)
 			{
-				var responseDto = await ResponseDtoMapper.MapAsync(response, null, null, sw?.ElapsedMilliseconds, true, false, false, cancellationToken).ConfigureAwait(false);
-				string? body = null;
-				if (response.Content != null)
-					body = await response.Content.ReadAsStringAsync(
-#if NET6_0_OR_GREATER
-					cancellationToken
-#endif
-					).ConfigureAwait(false);
+				sw?.Stop();
+
+				var responseDto = await ResponseDtoMapper.MapAsync(response, null, null, error, sw?.ElapsedMilliseconds, true, false, false, cancellationToken).ConfigureAwait(false);
+				var httpContentDto = HttpContentHelper.ParseHttpContent(response?.Content);
 
 				try
 				{
-					await logger.OnAfterResponseReceivedAsStringAsync.Invoke(responseDto, body, correlationId, cancellationToken).ConfigureAwait(false);
+					await logger.LogResponseAsync(
+						requestLogIdentifier.Value,
+						responseDto,
+						httpContentDto,
+						traceInfo,
+						serviceProvider,
+						_options,
+						cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
-					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
+					var applicationCoxntext = serviceProvider.GetService<IApplicationContext>();
 					if (applicationCoxntext != null)
-						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStringAsync)}"), true);
+						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
 					else
-						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStringAsync)}"), true);
+						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
 				}
 			}
 
-			if (logger.OnAfterResponseReceivedAsByteArrayAsync != null)
-			{
-				var responseDto = await ResponseDtoMapper.MapAsync(response, null, null, sw?.ElapsedMilliseconds, true, false, false, cancellationToken).ConfigureAwait(false);
-				byte[]? body = null;
-				if (response.Content != null)
-					body = await response.Content.ReadAsByteArrayAsync(
-#if NET6_0_OR_GREATER
-					cancellationToken
-#endif
-					).ConfigureAwait(false);
-
-				try
-				{
-					await logger.OnAfterResponseReceivedAsByteArrayAsync.Invoke(responseDto, body, correlationId, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
-					if (applicationCoxntext != null)
-						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsByteArrayAsync)}"), true);
-					else
-						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsByteArrayAsync)}"), true);
-				}
-			}
-
-			if (logger.OnAfterResponseReceivedAsStreamAsync != null)
-			{
-				var responseDto = await ResponseDtoMapper.MapAsync(response, null, null, sw?.ElapsedMilliseconds, true, false, false, cancellationToken).ConfigureAwait(false);
-				Stream? body = null;
-				if (response.Content != null)
-					body = await response.Content.ReadAsStreamAsync(
-#if NET6_0_OR_GREATER
-					cancellationToken
-#endif
-					).ConfigureAwait(false);
-
-				try
-				{
-					await logger.OnAfterResponseReceivedAsStreamAsync.Invoke(responseDto, body, correlationId, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					var applicationCoxntext = _serviceProvider.GetService<IApplicationContext>();
-					if (applicationCoxntext != null)
-						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStreamAsync)}"), true);
-					else
-						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.OnAfterResponseReceivedAsStreamAsync)}"), true);
-				}
-			}
+			return response!;
 		}
+		catch (Exception ex)
+		{
+			error = ex.ToStringTrace();
 
-		return response;
-	}
+			if (logger != null && requestLogIdentifier.HasValue)
+			{
+				sw?.Stop();
 
-	private IRequestResponseLogger? GetLogger(string? uri)
-	{
-		if (string.IsNullOrWhiteSpace(uri))
-			return null;
+				var responseDto = await ResponseDtoMapper.MapAsync(response, null, null, error, sw?.ElapsedMilliseconds, true, false, false, cancellationToken).ConfigureAwait(false);
+				var httpContentDto = HttpContentHelper.ParseHttpContent(response?.Content);
 
-		if (_options.LogDisabledUris != null && _options.LogDisabledUris.Any(x => uri!.StartsWith(x)))
-			return null;
+				try
+				{
+					await logger.LogResponseAsync(
+						requestLogIdentifier.Value,
+						responseDto,
+						httpContentDto,
+						traceInfo,
+						serviceProvider,
+						_options,
+						cancellationToken).ConfigureAwait(false);
+				}
+				catch (Exception exLog)
+				{
+					var applicationCoxntext = serviceProvider.GetService<IApplicationContext>();
+					if (applicationCoxntext != null)
+						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(exLog).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
+					else
+						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(exLog).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
+				}
+			}
 
-		if (_options.UriLoggers == null || _options.UriLoggers.Count == 0)
-			return null;
-
-		var key = _options.UriLoggers.Keys.FirstOrDefault(x => uri!.StartsWith(x));
-		if (!string.IsNullOrWhiteSpace(key) && _options.UriLoggers.TryGetValue(key, out var logger))
-				return logger;
-
-		if (_options.UriLoggers.TryGetValue("*", out var defaultLogger))
-			return defaultLogger;
-
-		return null;
+			throw;
+		}
 	}
 }

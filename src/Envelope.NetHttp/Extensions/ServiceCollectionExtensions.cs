@@ -70,67 +70,67 @@ public static class ServiceCollectionExtensions
 		return services;
 	}
 
-	public static IServiceCollection AddHttpApiClient<TClient, TOptions, TIdentity>(this IServiceCollection services,
-		Action<TOptions>? configureOptions,
-		Action<HttpClient>? configureClient = null,
-		Action<IHttpClientBuilder>? configureHttpClientBuilder = null)
-		where TClient : HttpApiClient
-		where TOptions : HttpApiClientOptions, new()
-		where TIdentity : struct
-	{
-		var options = new TOptions();
-		configureOptions?.Invoke(options);
+	//public static IServiceCollection AddHttpApiClient<TClient, TOptions, TIdentity>(this IServiceCollection services,
+	//	Action<TOptions>? configureOptions,
+	//	Action<HttpClient>? configureClient = null,
+	//	Action<IHttpClientBuilder>? configureHttpClientBuilder = null)
+	//	where TClient : HttpApiClient
+	//	where TOptions : HttpApiClientOptions, new()
+	//	where TIdentity : struct
+	//{
+	//	var options = new TOptions();
+	//	configureOptions?.Invoke(options);
 
-		var error = options.Validate();
-		if (0 < error?.Count)
-			throw new ConfigurationException(error);
+	//	var error = options.Validate();
+	//	if (0 < error?.Count)
+	//		throw new ConfigurationException(error);
 
-		services.Configure<TOptions>(opt =>
-		{
-			configureOptions?.Invoke(opt);
-		});
+	//	services.Configure<TOptions>(opt =>
+	//	{
+	//		configureOptions?.Invoke(opt);
+	//	});
 
-		services.TryAddTransient<LogHandler<TOptions, TIdentity>>();
-		services.TryAddTransient<PolicyHandler<TOptions>>();
+	//	services.TryAddTransient<LogHandler<TOptions, TIdentity>>();
+	//	services.TryAddTransient<PolicyHandler<TOptions>>();
 
-		var httpClientBuilder =
-			services.AddHttpClient<TClient>(httpClient =>
-			{
-				httpClient.DefaultRequestHeaders.Clear();
+	//	var httpClientBuilder =
+	//		services.AddHttpClient<TClient>(httpClient =>
+	//		{
+	//			httpClient.DefaultRequestHeaders.Clear();
 
-				if (!string.IsNullOrWhiteSpace(options.BaseAddress))
-					httpClient.BaseAddress = new Uri(options.BaseAddress);
+	//			if (!string.IsNullOrWhiteSpace(options.BaseAddress))
+	//				httpClient.BaseAddress = new Uri(options.BaseAddress);
 
-				if (!string.IsNullOrWhiteSpace(options.UserAgent))
-					httpClient.DefaultRequestHeaders.Add("User-Agent", $"{options.UserAgent}{(options.Version == null ? "" : $" v{options.Version}")}");
+	//			if (!string.IsNullOrWhiteSpace(options.UserAgent))
+	//				httpClient.DefaultRequestHeaders.Add("User-Agent", $"{options.UserAgent}{(options.Version == null ? "" : $" v{options.Version}")}");
 
-				configureClient?.Invoke(httpClient);
-			});
+	//			configureClient?.Invoke(httpClient);
+	//		});
 
-		//na konci, aby to bol najviac outer handler
-		httpClientBuilder
-			.AddHttpMessageHandler<PolicyHandler<TOptions>>();
+	//	//na konci, aby to bol najviac outer handler
+	//	httpClientBuilder
+	//		.AddHttpMessageHandler<PolicyHandler<TOptions>>();
 
-		configureHttpClientBuilder?.Invoke(httpClientBuilder);
+	//	configureHttpClientBuilder?.Invoke(httpClientBuilder);
 
-		//na konci, aby to bol najviac inner handler
-		httpClientBuilder
-			.AddHttpMessageHandler<LogHandler<TOptions, TIdentity>>();
+	//	//na konci, aby to bol najviac inner handler
+	//	httpClientBuilder
+	//		.AddHttpMessageHandler<LogHandler<TOptions, TIdentity>>();
 
-		if (options.ApplyToHttpClientHandler)
-		{
-			httpClientBuilder
-				.ConfigurePrimaryHttpMessageHandler(
-					serviceProvider =>
-					{
-						var handler = new System.Net.Http.HttpClientHandler();
+	//	if (options.ApplyToHttpClientHandler)
+	//	{
+	//		httpClientBuilder
+	//			.ConfigurePrimaryHttpMessageHandler(
+	//				serviceProvider =>
+	//				{
+	//					var handler = new System.Net.Http.HttpClientHandler();
 
-						options.ConfigureHttpClientHandler(handler);
+	//					options.ConfigureHttpClientHandler(handler);
 
-						return handler;
-					});
-		}
+	//					return handler;
+	//				});
+	//	}
 
-		return services;
-	}
+	//	return services;
+	//}
 }
