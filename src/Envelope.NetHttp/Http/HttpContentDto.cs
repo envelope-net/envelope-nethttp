@@ -1,5 +1,4 @@
 ﻿using Envelope.Extensions;
-using System.IO;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
@@ -80,14 +79,7 @@ public class HttpContentDto
 
 			var streamContent = StreamContents?.FirstOrDefault();
 			if (streamContent?.Stream != null)
-			{
-				//TODO: pouzi Envelope.Extensions.StreamExtensions.ToStringAsync
-				//return await streamContent.Stream.ToStringAsync(Encoding.UTF8, true);
-
-				streamContent.Stream.Seek(0, SeekOrigin.Begin);
-				using var reader = new StreamReader(streamContent.Stream, Encoding.UTF8);
-				return await reader.ReadToEndAsync();
-			}
+				return await streamContent.Stream.ToStringAsync(Encoding.UTF8, true);
 
 			var byteArrayContent = ByteArrayContents?.FirstOrDefault();
 			if (byteArrayContent?.ByteArray != null)
@@ -95,14 +87,7 @@ public class HttpContentDto
 
 			var httpContent = HttpContents?.FirstOrDefault();
 			if (httpContent?.Stream != null)
-			{
-				//TODO: pouzi Envelope.Extensions.StreamExtensions.ToStringAsync
-				//return await httpContent.Stream.ToStringAsync(Encoding.UTF8, true);
-
-				httpContent.Stream.Seek(0, SeekOrigin.Begin);
-				using var reader = new StreamReader(httpContent.Stream, Encoding.UTF8);
-				return await reader.ReadToEndAsync();
-			}
+				return await httpContent.Stream.ToStringAsync(Encoding.UTF8, true);
 		}
 
 		return null;
