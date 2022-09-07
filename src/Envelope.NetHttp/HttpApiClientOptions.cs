@@ -12,6 +12,8 @@ namespace Envelope.NetHttp;
 
 public abstract class HttpApiClientOptions : IValidable
 {
+	private Type? _defaultRequestResponseLoggerType;
+
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
 	public string ClientName { get; set; }
@@ -52,6 +54,12 @@ public abstract class HttpApiClientOptions : IValidable
 	//Func<object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors, bool)>
 	public Func<object, X509Certificate, X509Chain, SslPolicyErrors, bool>? RemoteCertificateValidationCallback { get; set; }
 		= DefaultServerCertificateValidation.ServerCertificateValidation;
+
+	public void SetDefaultRequestResponseLogger<T>()
+		where T : IRequestResponseLogger
+	{
+		_defaultRequestResponseLoggerType = typeof(T);
+	}
 
 	public bool ApplyToHttpClientHandler => 
 		AutomaticDecompression.HasValue
@@ -180,9 +188,18 @@ public abstract class HttpApiClientOptions : IValidable
 	{
 		if (serviceProvider != null)
 		{
-			var requestResponseLogger = serviceProvider.GetService<IRequestResponseLogger>();
-			if (requestResponseLogger != null)
-				return requestResponseLogger;
+			if (_defaultRequestResponseLoggerType != null)
+			{
+				var requestResponseLogger = serviceProvider.GetService(_defaultRequestResponseLoggerType);
+				if (requestResponseLogger != null)
+					return (IRequestResponseLogger)requestResponseLogger;
+			}
+			else
+			{
+				var requestResponseLogger = serviceProvider.GetService<IRequestResponseLogger>();
+				if (requestResponseLogger != null)
+					return requestResponseLogger;
+			}
 		}
 
 		if (string.IsNullOrWhiteSpace(uri))

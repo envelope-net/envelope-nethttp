@@ -170,6 +170,30 @@ public abstract class HttpApiClient
 	}
 
 	protected virtual ErrorMessageBuilder? CreateErrorMessage(
+		ITraceInfo traceInfo,
+		IHttpApiClientRequest? request,
+		IHttpApiClientResponse? response)
+	{
+		if (request == null && response == null)
+			return null;
+
+		traceInfo = TraceInfo.Create(traceInfo);
+		ErrorMessageBuilder? builder;
+
+		if (response == null)
+		{
+			builder = new ErrorMessageBuilder(traceInfo);
+			builder.InternalMessage("NO RESPONSE").Detail($"URI = {request?.GetRequestUri()}");
+		}
+		else
+		{
+			response.HasErrorOrNoResponse(traceInfo, out builder);
+		}
+
+		return builder;
+	}
+
+	protected virtual ErrorMessageBuilder? CreateErrorMessage(
 		IApplicationContext applicationContext,
 		IHttpApiClientRequest? request,
 		IHttpApiClientResponse? response,
@@ -180,33 +204,49 @@ public abstract class HttpApiClient
 		if (request == null && response == null)
 			return null;
 
-		var builder = new ErrorMessageBuilder(TraceInfo.Create(applicationContext, null, memberName, sourceFilePath, sourceLineNumber));
-		var sb = new StringBuilder();
+		var traceInfo = TraceInfo.Create(applicationContext, null, memberName, sourceFilePath, sourceLineNumber);
+		ErrorMessageBuilder? builder;
 
-		if (request != null)
-			sb.AppendLine($"URI = {request.GetRequestUri()}");
-
-		if (response != null)
+		if (response == null)
 		{
-			if (request == null && response.Request != null)
-				sb.AppendLine($"URI = {response.Request.GetRequestUri()}");
-
-			sb.AppendLine($"{nameof(response.StatusCode)} = {response.StatusCode}");
-
-			if (response.OperationCanceled.HasValue)
-				sb.AppendLine($"{nameof(response.OperationCanceled)} = {response.OperationCanceled}");
-
-			if (response.RequestTimedOut.HasValue)
-				sb.AppendLine($"{nameof(response.RequestTimedOut)} = {response.RequestTimedOut}");
-
-			if (response.Exception != null)
-				builder.ExceptionInfo(response.Exception);
+			builder = new ErrorMessageBuilder(traceInfo);
+			builder.InternalMessage("NO RESPONSE").Detail($"URI = {request?.GetRequestUri()}");
 		}
-
-		builder.Detail(sb.ToString());
+		else
+		{
+			response.HasErrorOrNoResponse(traceInfo, out builder);
+		}
 
 		return builder;
 	}
+
+	//protected virtual ErrorMessageBuilder<TIdentity>? CreateErrorMessage<TIdentity>(
+	//	string sourceSystemName,
+	//	IHttpApiClientRequest? request,
+	//	IHttpApiClientResponse? response,
+	//	[CallerMemberName] string memberName = "",
+	//	[CallerFilePath] string sourceFilePath = "",
+	//	[CallerLineNumber] int sourceLineNumber = 0)
+	//	where TIdentity : struct
+	//{
+	//	if (request == null && response == null)
+	//		return null;
+
+	//	var traceInfo = TraceInfo<TIdentity>.Create(null, sourceSystemName, null, memberName, sourceFilePath, sourceLineNumber);
+	//	ErrorMessageBuilder<TIdentity>? builder;
+
+	//	if (response == null)
+	//	{
+	//		builder = new ErrorMessageBuilder<TIdentity>(traceInfo);
+	//		builder.InternalMessage("NO RESPONSE").Detail($"URI = {request?.GetRequestUri()}");
+	//	}
+	//	else
+	//	{
+	//		response.HasErrorOrNoResponse(traceInfo, out builder);
+	//	}
+
+	//	return builder;
+	//}
 
 	protected virtual ErrorMessageBuilder? LogError(
 		IApplicationContext applicationContext,
@@ -229,59 +269,15 @@ public abstract class HttpApiClient
 		return errorMessageBuilder;
 	}
 
-	protected virtual ErrorMessageBuilder<TIdentity>? CreateErrorMessage<TIdentity>(
-		string sourceSystemName,
+	protected virtual ErrorMessageBuilder? LogError(
+		ITraceInfo traceInfo,
 		IHttpApiClientRequest? request,
-		IHttpApiClientResponse? response,
-		[CallerMemberName] string memberName = "",
-		[CallerFilePath] string sourceFilePath = "",
-		[CallerLineNumber] int sourceLineNumber = 0)
-		where TIdentity : struct
+		IHttpApiClientResponse? response)
 	{
 		if (request == null && response == null)
 			return null;
 
-		var builder = new ErrorMessageBuilder<TIdentity>(TraceInfo<TIdentity>.Create(null, sourceSystemName, null, memberName, sourceFilePath, sourceLineNumber));
-		var sb = new StringBuilder();
-
-		if (request != null)
-			sb.AppendLine($"URI = {request.GetRequestUri()}");
-
-		if (response != null)
-		{
-			if (request == null && response.Request != null)
-				sb.AppendLine($"URI = {response.Request.GetRequestUri()}");
-
-			sb.AppendLine($"{nameof(response.StatusCode)} = {response.StatusCode}");
-
-			if (response.OperationCanceled.HasValue)
-				sb.AppendLine($"{nameof(response.OperationCanceled)} = {response.OperationCanceled}");
-
-			if (response.RequestTimedOut.HasValue)
-				sb.AppendLine($"{nameof(response.RequestTimedOut)} = {response.RequestTimedOut}");
-
-			if (response.Exception != null)
-				builder.ExceptionInfo(response.Exception);
-		}
-
-		builder.Detail(sb.ToString());
-
-		return builder;
-	}
-
-	protected virtual ErrorMessageBuilder<TIdentity>? LogError<TIdentity>(
-		string sourceSystemName,
-		IHttpApiClientRequest? request,
-		IHttpApiClientResponse? response,
-		[CallerMemberName] string memberName = "",
-		[CallerFilePath] string sourceFilePath = "",
-		[CallerLineNumber] int sourceLineNumber = 0)
-		where TIdentity : struct
-	{
-		if (request == null && response == null)
-			return null;
-
-		var errorMessageBuilder = CreateErrorMessage<TIdentity>(sourceSystemName, request, response, memberName, sourceFilePath, sourceLineNumber);
+		var errorMessageBuilder = CreateErrorMessage(traceInfo, request, response);
 
 		if (errorMessageBuilder == null)
 			return null;
@@ -290,6 +286,28 @@ public abstract class HttpApiClient
 
 		return errorMessageBuilder;
 	}
+
+	//protected virtual ErrorMessageBuilder<TIdentity>? LogError<TIdentity>(
+	//	string sourceSystemName,
+	//	IHttpApiClientRequest? request,
+	//	IHttpApiClientResponse? response,
+	//	[CallerMemberName] string memberName = "",
+	//	[CallerFilePath] string sourceFilePath = "",
+	//	[CallerLineNumber] int sourceLineNumber = 0)
+	//	where TIdentity : struct
+	//{
+	//	if (request == null && response == null)
+	//		return null;
+
+	//	var errorMessageBuilder = CreateErrorMessage<TIdentity>(sourceSystemName, request, response, memberName, sourceFilePath, sourceLineNumber);
+
+	//	if (errorMessageBuilder == null)
+	//		return null;
+
+	//	Logger.LogErrorMessage(errorMessageBuilder.Build(), true);
+
+	//	return errorMessageBuilder;
+	//}
 
 	protected virtual StringBuilder LogErrorToStringBuilder(
 		IHttpApiClientRequest? request,

@@ -39,6 +39,8 @@ public interface IHttpApiClientResponse : IDisposable
 
 	Action<ErrorMessageBuilder>? GetErrorMessageBuilderAction(bool checkResponseNotNull);
 
+	bool HasError(bool checkResponseNotNull);
+
 	bool HasError(ITraceInfo traceInfo, [MaybeNullWhen(false)] out ErrorMessageBuilder errorMessageBuilder);
 
 	bool HasErrorOrNoResponse(ITraceInfo traceInfo, [MaybeNullWhen(false)] out ErrorMessageBuilder errorMessageBuilder);

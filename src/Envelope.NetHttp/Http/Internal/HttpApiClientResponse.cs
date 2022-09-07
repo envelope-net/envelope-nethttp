@@ -105,6 +105,15 @@ internal class HttpApiClientResponse : IHttpApiClientResponse, IDisposable
 		return result;
 	}
 
+	public bool HasError(bool checkResponseNotNull)
+	{
+		return Exception != null
+			|| OperationCanceled == true
+			|| RequestTimedOut == true
+			|| !StatusCodeIsOK
+			|| checkResponseNotNull && HttpResponseMessage == null;
+	}
+
 	public Action<ErrorMessageBuilder>? GetErrorMessageBuilderAction(bool checkResponseNotNull)
 	{
 		var cancelOrTimeoutText = CancelOrTimeoutExceptionText;
@@ -162,54 +171,11 @@ internal class HttpApiClientResponse : IHttpApiClientResponse, IDisposable
 
 	public ErrorMessageBuilder? GetErrorMessageBuilder(ITraceInfo traceInfo, bool checkResponseNotNull)
 	{
-		var cancelOrTimeoutText = CancelOrTimeoutExceptionText;
-		if (Exception != null)
+		var action = GetErrorMessageBuilderAction(checkResponseNotNull);
+		if (action != null)
 		{
-			var builder =
-				new ErrorMessageBuilder(traceInfo)
-					.ExceptionInfo(Exception)
-					.Detail(Request.GetRequestUri())
-					.AppendDetail(StatusCode == null ? null : $"{nameof(StatusCode)} = {StatusCode}")
-					.AppendDetail(cancelOrTimeoutText);
-
-			if (checkResponseNotNull && HttpResponseMessage == null)
-				builder.AppendDetail($"{nameof(HttpResponseMessage)} == null");
-
-			return builder;
-		}
-		else if (!string.IsNullOrWhiteSpace(cancelOrTimeoutText))
-		{
-			var builder =
-				new ErrorMessageBuilder(traceInfo)
-					.InternalMessage(cancelOrTimeoutText)
-					.Detail(Request.GetRequestUri())
-					.AppendDetail(StatusCode == null ? null : $"{nameof(StatusCode)} = {StatusCode}");
-
-			if (checkResponseNotNull && HttpResponseMessage == null)
-				builder.AppendDetail($"{nameof(HttpResponseMessage)} == null");
-
-			return builder;
-		}
-		else if (!StatusCodeIsOK)
-		{
-			var builder =
-				new ErrorMessageBuilder(traceInfo)
-					.InternalMessage($"{nameof(StatusCode)} = {StatusCode}")
-					.Detail(Request.GetRequestUri());
-
-			if (checkResponseNotNull && HttpResponseMessage == null)
-				builder.AppendDetail($"{nameof(HttpResponseMessage)} == null");
-
-			return builder;
-		}
-		else if (checkResponseNotNull && HttpResponseMessage == null)
-		{
-			var builder =
-				new ErrorMessageBuilder(traceInfo)
-					.InternalMessage($"{nameof(HttpResponseMessage)} == null")
-					.Detail(Request.GetRequestUri())
-					.AppendDetail(StatusCode == null ? null : $"{nameof(StatusCode)} = {StatusCode}");
-
+			var builder = new ErrorMessageBuilder(traceInfo);
+			action?.Invoke(builder);
 			return builder;
 		}
 
