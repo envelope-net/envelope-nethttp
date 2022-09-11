@@ -5,7 +5,7 @@ using System.Text;
 
 namespace System.Net.Http.Json;
 
-public sealed partial class JsonContent : HttpContent
+public sealed partial class JsonContent : System.Net.Http.HttpContent
 {
 	internal const string JsonMediaType = "application/json";
 	internal const string JsonType = "application";

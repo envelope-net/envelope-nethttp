@@ -7,6 +7,8 @@ public class HttpApiClientRequest : IHttpApiClientRequest
 {
 	public const string MultipartFormData = "form-data";
 
+	private HttpRequestMessage? _httpRequestMessage;
+
 	public string? BaseAddress { get; set; }
 	public string? RelativePath { get; set; }
 	public string? QueryString { get; set; }
@@ -27,8 +29,105 @@ public class HttpApiClientRequest : IHttpApiClientRequest
 		Headers = new RequestHeaders();
 	}
 
+	public static HttpApiClientRequest FromHttpRequest(HttpRequestMessage httpRequestMessage, bool setHeaders)
+	{
+		if (httpRequestMessage == null)
+			throw new ArgumentNullException(nameof(httpRequestMessage));
+
+		var result = new HttpApiClientRequest
+		{
+			_httpRequestMessage = httpRequestMessage,
+			RelativePath = httpRequestMessage.RequestUri?.AbsolutePath,
+			HttpMethod = httpRequestMessage.Method?.Method
+		};
+
+		if (setHeaders)
+			result.Headers.SetHttpRequestHeaders(httpRequestMessage.Headers);
+
+		if (httpRequestMessage?.Content == null)
+			return result;
+
+		if (httpRequestMessage.Content is System.Net.Http.StringContent stringContent)
+		{
+			result.StringContents = new List<StringContent>
+			{
+				StringContent.FromStringContent(stringContent)
+			};
+		}
+		else if (httpRequestMessage.Content is System.Net.Http.Json.JsonContent jsonContent)
+		{
+			result.JsonContents = new List<JsonContent>
+			{
+				JsonContent.FromJsonContent(jsonContent)
+			};
+		}
+		else if (httpRequestMessage.Content is System.Net.Http.StreamContent streamContent)
+		{
+			result.StreamContents = new List<StreamContent>
+			{
+				StreamContent.FromStreamContent(streamContent)
+			};
+		}
+		else if (httpRequestMessage.Content is System.Net.Http.ByteArrayContent byteArrayContent)
+		{
+			result.ByteArrayContents = new List<ByteArrayContent>
+			{
+				ByteArrayContent.FromByteArrayContent(byteArrayContent)
+			};
+		}
+		else if (httpRequestMessage.Content is System.Net.Http.MultipartContent multipartContent)
+		{
+			//TODO dorobit
+			throw new NotImplementedException($"Unknown content = {multipartContent.GetType().FullName}");
+		}
+		else
+		{
+			throw new NotImplementedException($"Unknown content = {httpRequestMessage.Content.GetType().FullName}");
+		}
+
+		return result;
+	}
+
+	internal static Task<HttpApiClientRequest> FromHttpRequestWithContentAsync(HttpRequestMessage httpRequestMessage, bool setHeaders)
+		=> FromHttpRequest(httpRequestMessage, setHeaders).ReadContentAsync();
+
+	internal async Task<HttpApiClientRequest> ReadContentAsync()
+	{
+		if (_httpRequestMessage?.Content == null)
+			return this;
+
+		if (0 < StringContents?.Count)
+		{
+			foreach (var stringContent in StringContents)
+				await stringContent.ReadContentAsync();
+		}
+
+		if (0 < JsonContents?.Count)
+		{
+			foreach (var jsonContent in JsonContents)
+				await jsonContent.ReadContentAsync();
+		}
+
+		if (0 < StreamContents?.Count)
+		{
+			foreach (var streamContent in StreamContents)
+				await streamContent.ReadContentAsync();
+		}
+
+		if (0 < ByteArrayContents?.Count)
+		{
+			foreach (var byteArrayContent in ByteArrayContents)
+				await byteArrayContent.ReadContentAsync();
+		}
+
+		return this;
+	}
+
 	public HttpRequestMessage ToHttpRequestMessage()
 	{
+		if (_httpRequestMessage != null)
+			return _httpRequestMessage;
+
 		if (HttpMethod == null)
 			throw new InvalidOperationException($"{HttpMethod} == null");
 
@@ -48,11 +147,13 @@ public class HttpApiClientRequest : IHttpApiClientRequest
 	}
 
 	public string? GetRequestUri()
-		=> UriHelper.Combine(
-			string.IsNullOrWhiteSpace(BaseAddress) ? "/" : BaseAddress,
-			$"{RelativePath}{QueryString}");
+		=> string.IsNullOrWhiteSpace(BaseAddress)
+			? UriHelper.Combine($"{RelativePath}{QueryString}")
+			: UriHelper.Combine(
+				BaseAddress,
+				$"{RelativePath}{QueryString}");
 
-	public HttpContent? ToHttpContent()
+	public System.Net.Http.HttpContent? ToHttpContent()
 	{
 		var contentsCount =
 			(FormData?.Count ?? 0)

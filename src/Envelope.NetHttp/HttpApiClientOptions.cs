@@ -2,16 +2,24 @@
 using Envelope.Security.Cryptography;
 using Envelope.Text;
 using Envelope.Validation;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 
 namespace Envelope.NetHttp;
 
 public abstract class HttpApiClientOptions : IValidable
 {
+	private Type? _defaultRequestResponseLoggerType;
+
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
+	public string ClientName { get; set; }
+
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
 	public string SourceSystemName { get; set; } = nameof(HttpApiClient);
 	public string? BaseAddress { get; set; }
 	public string? UserAgent { get; set; } = nameof(HttpApiClient);
@@ -46,6 +54,12 @@ public abstract class HttpApiClientOptions : IValidable
 	//Func<object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors, bool)>
 	public Func<object, X509Certificate, X509Chain, SslPolicyErrors, bool>? RemoteCertificateValidationCallback { get; set; }
 		= DefaultServerCertificateValidation.ServerCertificateValidation;
+
+	public void SetDefaultRequestResponseLogger<T>()
+		where T : IRequestResponseLogger
+	{
+		_defaultRequestResponseLoggerType = typeof(T);
+	}
 
 	public bool ApplyToHttpClientHandler => 
 		AutomaticDecompression.HasValue
@@ -131,9 +145,7 @@ public abstract class HttpApiClientOptions : IValidable
 		if (credential == null)
 			throw new ArgumentNullException(nameof(credential));
 
-		if (CredentialCache == null)
-			CredentialCache = new CredentialCache();
-
+		CredentialCache ??= new CredentialCache();
 		CredentialCache.Add(host, port, authenticationType.ToString(), credential);
 	}
 
@@ -145,30 +157,67 @@ public abstract class HttpApiClientOptions : IValidable
 		if (credential == null)
 			throw new ArgumentNullException(nameof(credential));
 
-		if (CredentialCache == null)
-			CredentialCache = new CredentialCache();
-
+		CredentialCache ??= new CredentialCache();
 		CredentialCache.Add(new Uri(uriPrefix), authenticationType.ToString(), credential);
 	}
 
 	public List<IValidationMessage>? Validate(string? propertyPrefix = null, List<IValidationMessage>? parentErrorBuffer = null, Dictionary<string, object>? validationContext = null)
 	{
-		if (string.IsNullOrWhiteSpace(BaseAddress))
-		{
-			if (parentErrorBuffer == null)
-				parentErrorBuffer = new List<IValidationMessage>();
+		//if (string.IsNullOrWhiteSpace(BaseAddress))
+		//{
+		//	parentErrorBuffer ??= new List<IValidationMessage>();
+		//	parentErrorBuffer.Add(ValidationMessageFactory.Error($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(BaseAddress))} == null"));
+		//}
 
-			parentErrorBuffer.Add(ValidationMessageFactory.Error($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(BaseAddress))} == null"));
+		if (string.IsNullOrWhiteSpace(ClientName))
+		{
+			parentErrorBuffer ??= new List<IValidationMessage>();
+			parentErrorBuffer.Add(ValidationMessageFactory.Error($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(ClientName))} == null"));
 		}
 
 		if (Credentials != null && CredentialCache != null)
 		{
-			if (parentErrorBuffer == null)
-				parentErrorBuffer = new List<IValidationMessage>();
-
+			parentErrorBuffer ??= new List<IValidationMessage>();
 			parentErrorBuffer.Add(ValidationMessageFactory.Error($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(Credentials))} != null && {StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(CredentialCache))} != null"));
 		}
 
 		return parentErrorBuffer;
+	}
+
+	public virtual IRequestResponseLogger? GetLogger(string? uri, IServiceProvider? serviceProvider = null)
+	{
+		if (serviceProvider != null)
+		{
+			if (_defaultRequestResponseLoggerType != null)
+			{
+				var requestResponseLogger = serviceProvider.GetService(_defaultRequestResponseLoggerType);
+				if (requestResponseLogger != null)
+					return (IRequestResponseLogger)requestResponseLogger;
+			}
+			else
+			{
+				var requestResponseLogger = serviceProvider.GetService<IRequestResponseLogger>();
+				if (requestResponseLogger != null)
+					return requestResponseLogger;
+			}
+		}
+
+		if (string.IsNullOrWhiteSpace(uri))
+			return null;
+
+		if (LogDisabledUris != null && LogDisabledUris.Any(x => uri!.StartsWith(x)))
+			return null;
+
+		if (UriLoggers == null || UriLoggers.Count == 0)
+			return null;
+
+		var key = UriLoggers.Keys.FirstOrDefault(x => uri!.StartsWith(x));
+		if (!string.IsNullOrWhiteSpace(key) && UriLoggers.TryGetValue(key, out var logger))
+			return logger;
+
+		if (UriLoggers.TryGetValue("*", out var defaultLogger))
+			return defaultLogger;
+
+		return null;
 	}
 }

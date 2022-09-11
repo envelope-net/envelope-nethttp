@@ -26,11 +26,7 @@ public static class RequestDtoMapper
 		};
 
 		try { request.Method = httpRequest.Method.Method; } catch { }
-#if NETSTANDARD2_0 || NETSTANDARD2_1
-		try { request.Path = Newtonsoft.Json.JsonConvert.SerializeObject(httpRequest.RequestUri); } catch { request.Path = httpRequest.RequestUri?.ToString(); }
-#elif NET6_0_OR_GREATER
-		try { request.Path = System.Text.Json.JsonSerializer.Serialize(httpRequest.RequestUri); } catch { request.Path = httpRequest.RequestUri?.ToString(); }
-#endif
+		try { request.Path = httpRequest.RequestUri?.ToString(); } catch { }
 
 		if (logRequestHeaders)
 		{

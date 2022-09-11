@@ -1,5 +1,8 @@
 ﻿#if NETSTANDARD2_0 || NETSTANDARD2_1
 using Envelope.Extensions;
+using Envelope.Logging;
+using Envelope.Trace;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Envelope.NetHttp.Http.Internal;
 
@@ -19,7 +22,14 @@ internal class HttpApiClientResponse : IHttpApiClientResponse, IDisposable
 	[Newtonsoft.Json.JsonIgnore]
 	public Exception? Exception { get; set; }
 
-	public string? ExceptionText => Exception?.ToStringTrace();
+	public string? CancelOrTimeoutExceptionText =>
+		OperationCanceled == true
+			? "Operation was cancelled"
+			: (RequestTimedOut == true
+				? "Request timed out"
+				: null);
+
+	public string? ExceptionText => Exception?.ToStringTrace() ?? CancelOrTimeoutExceptionText;
 
 	[Newtonsoft.Json.JsonIgnore]
 	public bool StatusCodeIsOK =>
@@ -103,6 +113,107 @@ internal class HttpApiClientResponse : IHttpApiClientResponse, IDisposable
 
 		var result = serializer.Deserialize<T>(jsonTextReader);
 		return result;
+	}
+
+	public bool HasError(bool checkResponseNotNull)
+	{
+		return Exception != null
+			|| OperationCanceled == true
+			|| RequestTimedOut == true
+			|| !StatusCodeIsOK
+			|| checkResponseNotNull && HttpResponseMessage == null;
+	}
+
+	public Action<ErrorMessageBuilder>? GetErrorMessageBuilderAction(bool checkResponseNotNull)
+	{
+		var cancelOrTimeoutText = CancelOrTimeoutExceptionText;
+		if (Exception != null)
+		{
+			var builderAction =
+				(Action<ErrorMessageBuilder>)(x => x
+					.ExceptionInfo(Exception)
+					.Detail(Request.GetRequestUri())
+					.AppendDetail(StatusCode == null ? null : $"{nameof(StatusCode)} = {StatusCode}")
+					.AppendDetail(cancelOrTimeoutText));
+
+			if (checkResponseNotNull && HttpResponseMessage == null)
+				builderAction += x => x.AppendDetail($"{nameof(HttpResponseMessage)} == null");
+
+			return builderAction;
+		}
+		else if (!string.IsNullOrWhiteSpace(cancelOrTimeoutText))
+		{
+			var builderAction =
+				(Action<ErrorMessageBuilder>)(x => x
+					.InternalMessage(cancelOrTimeoutText)
+					.Detail(Request.GetRequestUri())
+					.AppendDetail(StatusCode == null ? null : $"{nameof(StatusCode)} = {StatusCode}"));
+
+			if (checkResponseNotNull && HttpResponseMessage == null)
+				builderAction += x => x.AppendDetail($"{nameof(HttpResponseMessage)} == null");
+
+			return builderAction;
+		}
+		else if (!StatusCodeIsOK)
+		{
+			var builderAction =
+				(Action<ErrorMessageBuilder>)(x => x
+					.InternalMessage($"{nameof(StatusCode)} = {StatusCode}")
+					.Detail(Request.GetRequestUri()));
+
+			if (checkResponseNotNull && HttpResponseMessage == null)
+				builderAction += x => x.AppendDetail($"{nameof(HttpResponseMessage)} == null");
+
+			return builderAction;
+		}
+		else if (checkResponseNotNull && HttpResponseMessage == null)
+		{
+			void builderAction(ErrorMessageBuilder x) => x
+					.InternalMessage($"{nameof(HttpResponseMessage)} == null")
+					.Detail(Request.GetRequestUri())
+					.AppendDetail(StatusCode == null ? null : $"{nameof(StatusCode)} = {StatusCode}");
+
+			return builderAction;
+		}
+
+		return null;
+	}
+
+	public ErrorMessageBuilder? GetErrorMessageBuilder(ITraceInfo traceInfo, bool checkResponseNotNull)
+	{
+		var action = GetErrorMessageBuilderAction(checkResponseNotNull);
+		if (action != null)
+		{
+			var builder = new ErrorMessageBuilder(traceInfo);
+			action?.Invoke(builder);
+			return builder;
+		}
+
+		return null;
+	}
+
+	public bool HasError(ITraceInfo traceInfo, [MaybeNullWhen(false)] out ErrorMessageBuilder errorMessageBuilder)
+	{
+		errorMessageBuilder = GetErrorMessageBuilder(traceInfo, false);
+		return errorMessageBuilder != null;
+	}
+
+	public bool HasErrorOrNoResponse(ITraceInfo traceInfo, [MaybeNullWhen(false)] out ErrorMessageBuilder errorMessageBuilder)
+	{
+		errorMessageBuilder = GetErrorMessageBuilder(traceInfo, true);
+		return errorMessageBuilder != null;
+	}
+
+	public bool HasError([MaybeNullWhen(false)] out Action<ErrorMessageBuilder> errorMessageBuilder)
+	{
+		errorMessageBuilder = GetErrorMessageBuilderAction(false);
+		return errorMessageBuilder != null;
+	}
+
+	public bool HasErrorOrNoResponse([MaybeNullWhen(false)] out Action<ErrorMessageBuilder> errorMessageBuilder)
+	{
+		errorMessageBuilder = GetErrorMessageBuilderAction(true);
+		return errorMessageBuilder != null;
 	}
 
 	public override string ToString()

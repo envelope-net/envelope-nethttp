@@ -1,4 +1,8 @@
-﻿namespace Envelope.NetHttp.Http;
+﻿using Envelope.Logging;
+using Envelope.Trace;
+using System.Diagnostics.CodeAnalysis;
+
+namespace Envelope.NetHttp.Http;
 
 public interface IHttpApiClientResponse : IDisposable
 {
@@ -14,6 +18,7 @@ public interface IHttpApiClientResponse : IDisposable
 	[System.Text.Json.Serialization.JsonIgnore]
 #endif
 	Exception? Exception { get; }
+	string? CancelOrTimeoutExceptionText { get; }
 	string? ExceptionText { get; }
 
 #if NETSTANDARD2_0 || NETSTANDARD2_1
@@ -29,6 +34,20 @@ public interface IHttpApiClientResponse : IDisposable
 	[System.Text.Json.Serialization.JsonIgnore]
 #endif
 	bool IsOK { get; }
+
+	ErrorMessageBuilder? GetErrorMessageBuilder(ITraceInfo traceInfo, bool checkResponseNotNull);
+
+	Action<ErrorMessageBuilder>? GetErrorMessageBuilderAction(bool checkResponseNotNull);
+
+	bool HasError(bool checkResponseNotNull);
+
+	bool HasError(ITraceInfo traceInfo, [MaybeNullWhen(false)] out ErrorMessageBuilder errorMessageBuilder);
+
+	bool HasErrorOrNoResponse(ITraceInfo traceInfo, [MaybeNullWhen(false)] out ErrorMessageBuilder errorMessageBuilder);
+
+	bool HasError([MaybeNullWhen(false)] out Action<ErrorMessageBuilder> errorMessageBuilder);
+
+	bool HasErrorOrNoResponse([MaybeNullWhen(false)] out Action<ErrorMessageBuilder> errorMessageBuilder);
 
 	List<KeyValuePair<string, IEnumerable<string>>>? GetAllHeaders();
 	List<KeyValuePair<string, IEnumerable<string>>>? GetResponseHeaders();

@@ -21,5 +21,5 @@ public interface IHttpApiClientRequest
 
 	HttpRequestMessage ToHttpRequestMessage();
 	string? GetRequestUri();
-	HttpContent? ToHttpContent();
+	System.Net.Http.HttpContent? ToHttpContent();
 }

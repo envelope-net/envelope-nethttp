@@ -6,25 +6,28 @@ namespace Envelope.NetHttp.Http;
 public static class ResponseDtoMapper
 {
 	public static async Task<ResponseDto> MapAsync(
-		HttpResponseMessage httpResponse,
+		HttpResponseMessage? httpResponse,
 		Guid? correlationId,
 		string? externalCorrelationId,
+		string? error,
 		long? elapsedMilliseconds,
 		bool logResponseHeaders,
 		bool logResponseBodyAsString,
 		bool logResponseBodyAsByteArray,
 		CancellationToken cancellationToken)
 	{
-		if (httpResponse == null)
-			throw new ArgumentNullException(nameof(httpResponse));
-
 		var response = new ResponseDto
 		{
 			CorrelationId = correlationId,
 			ExternalCorrelationId = externalCorrelationId,
-			StatusCode = (int)httpResponse.StatusCode,
-			ElapsedMilliseconds = elapsedMilliseconds,
+			Error = error,
+			ElapsedMilliseconds = elapsedMilliseconds
 		};
+
+		if (httpResponse == null)
+			return response;
+
+		response.StatusCode = (int)httpResponse.StatusCode;
 
 		if (logResponseHeaders)
 		{

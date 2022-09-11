@@ -123,9 +123,13 @@ internal sealed class TranscodingWriteStream : Stream
 
 	protected override void Dispose(bool disposing)
 	{
-		if (!_disposed)
+		if (_disposed)
+			return;
+
+		_disposed = true;
+
+		if (disposing)
 		{
-			_disposed = true;
 			ArrayPool<char>.Shared.Return(_charBuffer);
 			_charBuffer = null!;
 		}
