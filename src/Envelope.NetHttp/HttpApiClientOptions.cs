@@ -29,6 +29,7 @@ public abstract class HttpApiClientOptions : IValidable
 
 	public DecompressionMethods? AutomaticDecompression { get; set; } = DecompressionMethods.GZip;
 	public IWebProxy? Proxy { get; set; }
+	public bool? UseProxy { get; set; }
 	public ICredentials? DefaultProxyCredentials { get; set; }
 	public bool TrustToAllServerCertificates { get; set; }
 	public bool? CheckCertificateRevocationList { get; set; }
@@ -64,6 +65,7 @@ public abstract class HttpApiClientOptions : IValidable
 	public bool ApplyToHttpClientHandler => 
 		AutomaticDecompression.HasValue
 		|| Proxy != null
+		|| UseProxy.HasValue
 		|| DefaultProxyCredentials != null
 		|| TrustToAllServerCertificates
 		|| CheckCertificateRevocationList.HasValue
@@ -91,6 +93,9 @@ public abstract class HttpApiClientOptions : IValidable
 
 		if (Proxy != null)
 			handler.Proxy = Proxy;
+
+		if (UseProxy.HasValue)
+			handler.UseProxy = UseProxy.Value;
 
 		if (DefaultProxyCredentials != null)
 			handler.DefaultProxyCredentials = DefaultProxyCredentials;
