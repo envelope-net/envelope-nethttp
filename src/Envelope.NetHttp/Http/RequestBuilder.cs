@@ -17,9 +17,9 @@ public interface IRequestBuilder<TBuilder, TObject>
 
 	TBuilder RelativePath(string path, bool force = true);
 
-	TBuilder QueryString(string queryString, bool force = true);
+	TBuilder QueryString(string? queryString, bool force = true);
 
-	TBuilder QueryString(Dictionary<string, string> queryString, bool force = true);
+	TBuilder QueryString(Dictionary<string, string>? queryString, bool force = true);
 
 	TBuilder AddQueryString(string key, string value);
 
@@ -102,7 +102,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 		return _builder;
 	}
 
-	public TBuilder QueryString(string queryString, bool force = true)
+	public TBuilder QueryString(string? queryString, bool force = true)
 	{
 		if (force || string.IsNullOrWhiteSpace(_request.QueryString))
 			_request.QueryString = string.IsNullOrWhiteSpace(queryString)
@@ -112,7 +112,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 		return _builder;
 	}
 
-	public TBuilder QueryString(Dictionary<string, string> queryString, bool force = true)
+	public TBuilder QueryString(Dictionary<string, string>? queryString, bool force = true)
 	{
 		if (force || string.IsNullOrWhiteSpace(_request.QueryString))
 		{
