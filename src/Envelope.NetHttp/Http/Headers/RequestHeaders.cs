@@ -5,9 +5,10 @@ namespace Envelope.NetHttp.Http.Headers;
 public class RequestHeaders
 {
 	private const string Cookie = "Cookie";
-	public List<KeyValuePair<string, string?>> CustomHeaders { get; } = new List<KeyValuePair<string, string?>>();
-	public List<KeyValuePair<string, IEnumerable<string?>>> CustomCollectionHeaders { get; } = new List<KeyValuePair<string, IEnumerable<string?>>>();
-	public List<string> CookieCollectionHeaders { get; } = new List<string>();
+	public List<string> Cookies { get; } = new List<string>();
+	public List<ForceableKeyValuePair> CustomHeaders { get; } = new List<ForceableKeyValuePair>();
+	public List<ForceableKeyValuePairList> CustomCollectionHeaders { get; } = new List<ForceableKeyValuePairList>();
+	public List<ForceableKeyValuePair> CookieCollectionHeaders { get; } = new List<ForceableKeyValuePair>();
 
 	public List<MediaTypeWithQualityHeader>? Accept { get; set; }
 	public List<ProductInfoHeader>? UserAgent { get; set; }
@@ -41,24 +42,39 @@ public class RequestHeaders
 	public DateTimeOffset? IfModifiedSince { get; set; }
 	public List<WarningHeader>? Warning { get; set; }
 
-	public RequestHeaders Add(string name, string? value)
+	public RequestHeaders AddHeader(string name, string? value, bool force = true)
 	{
-		CustomHeaders.Add(new KeyValuePair<string, string?>(name, value));
+		if (force || !CustomHeaders.Any(x => x.Key == name))
+			CustomHeaders.Add(new ForceableKeyValuePair { Key = name, Value = value, Force = force });
+
 		return this;
 	}
 
-	public RequestHeaders Add(string name, IEnumerable<string?> values)
+	public RequestHeaders AddHeader(string name, IEnumerable<string?> values, bool force = true)
 	{
-		CustomCollectionHeaders.Add(new KeyValuePair<string, IEnumerable<string?>>(name, values));
+		if (force || !CustomCollectionHeaders.Any(x => x.Key == name))
+			CustomCollectionHeaders.Add(new ForceableKeyValuePairList { Key = name, Values = values, Force = force });
+
 		return this;
 	}
 
-	public RequestHeaders AddCookie(string key, string value)
+	public RequestHeaders AddCookie(string key, string value, bool force = true)
 	{
 		if (string.IsNullOrWhiteSpace(key))
 			throw new ArgumentNullException(nameof(key));
 
-		CookieCollectionHeaders.Add($"{key}={value}");
+		if (force || !CookieCollectionHeaders.Any(x => x.Key == key))
+			CookieCollectionHeaders.Add(new ForceableKeyValuePair { Key = key, Value = value, Force = force } );
+
+		return this;
+	}
+
+	public RequestHeaders AddCookie(string cookie)
+	{
+		if (string.IsNullOrWhiteSpace(cookie))
+			return this;
+
+		Cookies.Add(cookie);
 		return this;
 	}
 
@@ -177,12 +193,23 @@ public class RequestHeaders
 				httpRequestHeaders.Warning.Add(warning.ToWarningHeaderValue());
 
 		foreach (var customHeader in CustomHeaders)
+			if (customHeader.Force || !httpRequestHeaders.Contains(customHeader.Key))
 			httpRequestHeaders.Add(customHeader.Key, customHeader.Value);
 
 		foreach (var customCollectionHeader in CustomCollectionHeaders)
-			httpRequestHeaders.Add(customCollectionHeader.Key, customCollectionHeader.Value);
+			if (customCollectionHeader.Force || !httpRequestHeaders.Contains(customCollectionHeader.Key))
+				httpRequestHeaders.Add(customCollectionHeader.Key, customCollectionHeader.Values);
 
 		if (0 < CookieCollectionHeaders.Count)
-			httpRequestHeaders.Add(Cookie, string.Join("; ", CookieCollectionHeaders));
+		{
+			if (0 < Cookies?.Count)
+			{
+				httpRequestHeaders.Add(Cookie, $"{string.Join("; ", Cookies)};{string.Join("; ", CookieCollectionHeaders.Select(x => $"{x.Key}={x.Value}"))}");
+			}
+			else
+			{
+				httpRequestHeaders.Add(Cookie, string.Join("; ", CookieCollectionHeaders.Select(x => $"{x.Key}={x.Value}")));
+			}
+		}
 	}
 }

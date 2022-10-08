@@ -1,4 +1,5 @@
-﻿using Envelope.Policy;
+﻿using Envelope.NetHttp.Http;
+using Envelope.Policy;
 using Envelope.Security.Cryptography;
 using Envelope.Text;
 using Envelope.Validation;
@@ -24,6 +25,12 @@ public abstract class HttpApiClientOptions : IValidable
 	public string? BaseAddress { get; set; }
 	public string? UserAgent { get; set; } = nameof(HttpApiClient);
 	public Version? Version { get; set; }
+	public Dictionary<string, string>? StaticQueryStrings { get; set; }
+	public bool ForceStaticQueryStrings { get; set; }
+	public List<ForceableKeyValuePair>? StaticHeaders { get; set; }
+	public List<ForceableKeyValuePairList>? StaticHeaderCollections { get; set; }
+	public List<ForceableKeyValuePair>? StaticCookies { get; set; }
+	public List<ForceableKeyValuePair>? StaticFormData { get; set; }
 
 	#region HttpClientHandler
 
@@ -140,6 +147,69 @@ public abstract class HttpApiClientOptions : IValidable
 
 		if (AllowAutoRedirect.HasValue)
 			handler.AllowAutoRedirect = AllowAutoRedirect.Value;
+	}
+
+	public void ConfigureStaticRequestParams(IHttpApiClientRequest request)
+	{
+		if (request == null)
+			throw new ArgumentNullException(nameof(request));
+
+		var builder = new RequestBuilder(request);
+
+		if (StaticQueryStrings != null)
+		{
+			var dict = new Dictionary<string, string>();
+			foreach (var staticQueryString in StaticQueryStrings)
+				if (!string.IsNullOrWhiteSpace(staticQueryString.Key))
+					dict[staticQueryString.Key] = staticQueryString.Value;
+
+			if (0 < dict.Count)
+				builder.QueryString(dict, ForceStaticQueryStrings);
+		}
+
+		if (StaticHeaders != null)
+		{
+			foreach (var staticHeader in StaticHeaders)
+			{
+				if (string.IsNullOrWhiteSpace(staticHeader.Key))
+					continue;
+
+				request.Headers.AddHeader(staticHeader.Key, staticHeader.Value, staticHeader.Force);
+			}
+		}
+
+		if (StaticHeaderCollections != null)
+		{
+			foreach (var staticHeaderCollection in StaticHeaderCollections)
+			{
+				if (string.IsNullOrWhiteSpace(staticHeaderCollection.Key))
+					continue;
+
+				request.Headers.AddHeader(staticHeaderCollection.Key, staticHeaderCollection.Values, staticHeaderCollection.Force);
+			}
+		}
+
+		if (StaticCookies != null)
+		{
+			foreach (var staticCookie in StaticCookies)
+			{
+				if (string.IsNullOrWhiteSpace(staticCookie.Key))
+					continue;
+
+				request.Headers.AddCookie(staticCookie.Key, staticCookie.Value, staticCookie.Force);
+			}
+		}
+
+		if (StaticFormData != null)
+		{
+			foreach (var staticFormData in StaticFormData)
+			{
+				if (string.IsNullOrWhiteSpace(staticFormData.Key))
+					continue;
+
+				builder.AddFormData(new KeyValuePair<string, string>(staticFormData.Key, staticFormData.Value), staticFormData.Force);
+			}
+		}
 	}
 
 	public void AddCredentialCache(string host, int port, AuthenticationType authenticationType, NetworkCredential credential)
