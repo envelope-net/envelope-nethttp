@@ -81,6 +81,8 @@ public abstract class HttpApiClient
 		if (string.IsNullOrWhiteSpace(request.BaseAddress))
 			request.BaseAddress = Options.BaseAddress;
 
+		Options.ConfigureStaticRequestParams(request);
+
 		var response = new Http.Internal.HttpApiClientResponse(request);
 
 		CancellationTokenSource? requestTimeoutCancellationTokenSource = null;

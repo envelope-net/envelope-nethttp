@@ -198,11 +198,9 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 
 	public TBuilder AddFormData(KeyValuePair<string, string> formData, bool force = true)
 	{
-		if (force || _request.FormData == null)
+		if (force || _request.FormData == null || !_request.FormData.Any(x => x.Key == formData.Key))
 		{
-			if (_request.FormData == null)
-				_request.FormData = new List<KeyValuePair<string, string>>();
-
+			_request.FormData ??= new List<KeyValuePair<string, string>>();
 			_request.FormData.Add(formData);
 		}
 
@@ -216,9 +214,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (formData == null || formData.Count == 0)
 				return _builder;
 
-			if (_request.FormData == null)
-				_request.FormData = new List<KeyValuePair<string, string>>();
-
+			_request.FormData ??= new List<KeyValuePair<string, string>>();
 			_request.FormData.AddRange(formData);
 		}
 
@@ -232,9 +228,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (stringContent == null)
 				throw new ArgumentNullException(nameof(stringContent));
 
-			if (_request.StringContents == null)
-				_request.StringContents = new List<StringContent>();
-
+			_request.StringContents ??= new List<StringContent>();
 			_request.StringContents.Add(stringContent);
 		}
 
@@ -248,8 +242,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (configureStringContent == null)
 				return _builder;
 
-			if (_request.StringContents == null)
-				_request.StringContents = new List<StringContent>();
+			_request.StringContents ??= new List<StringContent>();
 
 			var stringContent = new StringContent();
 			stringContent = configureStringContent.Invoke(stringContent);
@@ -268,9 +261,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (jsonContent == null)
 				throw new ArgumentNullException(nameof(jsonContent));
 
-			if (_request.JsonContents == null)
-				_request.JsonContents = new List<JsonContent>();
-
+			_request.JsonContents ??= new List<JsonContent>();
 			_request.JsonContents.Add(jsonContent);
 		}
 
@@ -284,8 +275,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (configureJsonContent == null)
 				return _builder;
 
-			if (_request.JsonContents == null)
-				_request.JsonContents = new List<JsonContent>();
+			_request.JsonContents ??= new List<JsonContent>();
 
 			var jsonContent = new JsonContent();
 			jsonContent = configureJsonContent.Invoke(jsonContent);
@@ -304,8 +294,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (jsonContent == null)
 				throw new ArgumentNullException(nameof(jsonContent));
 
-			if (_request.JsonContents == null)
-				_request.JsonContents = new List<JsonContent>();
+			_request.JsonContents ??= new List<JsonContent>();
 
 			_request.JsonContents.Add(jsonContent);
 		}
@@ -320,8 +309,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (configureJsonContent == null)
 				return _builder;
 
-			if (_request.JsonContents == null)
-				_request.JsonContents = new List<JsonContent>();
+			_request.JsonContents ??= new List<JsonContent>();
 
 			var jsonContent = new JsonContent<T>();
 			jsonContent = configureJsonContent.Invoke(jsonContent);
@@ -340,9 +328,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (streamContent == null)
 				throw new ArgumentNullException(nameof(streamContent));
 
-			if (_request.StreamContents == null)
-				_request.StreamContents = new List<StreamContent>();
-
+			_request.StreamContents ??= new List<StreamContent>();
 			_request.StreamContents.Add(streamContent);
 		}
 
@@ -356,8 +342,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (configureStreamContent == null)
 				return _builder;
 
-			if (_request.StreamContents == null)
-				_request.StreamContents = new List<StreamContent>();
+			_request.StreamContents ??= new List<StreamContent>();
 
 			var streamContent = new StreamContent();
 			streamContent = configureStreamContent.Invoke(streamContent);
@@ -376,8 +361,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (byteArrayContent == null)
 				throw new ArgumentNullException(nameof(byteArrayContent));
 
-			if (_request.ByteArrayContents == null)
-				_request.ByteArrayContents = new List<ByteArrayContent>();
+			_request.ByteArrayContents ??= new List<ByteArrayContent>();
 
 			_request.ByteArrayContents.Add(byteArrayContent);
 		}
@@ -392,8 +376,7 @@ public abstract class RequestBuilderBase<TBuilder, TObject> : IRequestBuilder<TB
 			if (configureByteArrayContent == null)
 				return _builder;
 
-			if (_request.ByteArrayContents == null)
-				_request.ByteArrayContents = new List<ByteArrayContent>();
+			_request.ByteArrayContents ??= new List<ByteArrayContent>();
 
 			var byteArrayContent = new ByteArrayContent();
 			byteArrayContent = configureByteArrayContent.Invoke(byteArrayContent);
