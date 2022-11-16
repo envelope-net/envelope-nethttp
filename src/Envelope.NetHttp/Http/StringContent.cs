@@ -54,4 +54,7 @@ public class StringContent : ContentBase
 
 		return content;
 	}
+
+	public override Task<string?> ToStringAsync()
+		=> Task.FromResult(Content);
 }

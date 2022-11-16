@@ -1,4 +1,7 @@
-﻿namespace Envelope.NetHttp.Http;
+﻿using System.Net.Http;
+using System.Text;
+
+namespace Envelope.NetHttp.Http;
 
 public class ByteArrayContent : ContentBase
 {
@@ -49,4 +52,9 @@ public class ByteArrayContent : ContentBase
 
 		return content;
 	}
+
+	public override Task<string?> ToStringAsync()
+		=> ByteArray != null
+			? Task.FromResult((string?)Encoding.UTF8.GetString(ByteArray))
+			: Task.FromResult((string?)null);
 }

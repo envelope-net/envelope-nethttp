@@ -1,11 +1,16 @@
-﻿using Envelope.Extensions;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
+﻿using System.Text;
 
 namespace Envelope.NetHttp.Http;
 
 public class HttpContentDto
 {
+	public const string STRING_CONTENT_DELIMITER = "____________________________________________________________________________";
+	public const string STRING_CONTENT = nameof(STRING_CONTENT);
+	public const string JSON_CONTENT = nameof(JSON_CONTENT);
+	public const string STREAM_CONTENT = nameof(STREAM_CONTENT);
+	public const string BYTE_ARRAY_CONTENT = nameof(BYTE_ARRAY_CONTENT);
+	public const string HTTP_CONTENT = nameof(HTTP_CONTENT);
+
 	public List<StringContent>? StringContents { get; set; }
 	public List<JsonContent>? JsonContents { get; set; }
 	public List<StreamContent>? StreamContents { get; set; }
@@ -47,7 +52,7 @@ public class HttpContentDto
 		return this;
 	}
 
-	public async Task<string?> ContentsToStringAsync()
+	public async Task<string?> ContentsToStringAsync(string? contentDelimiter = STRING_CONTENT_DELIMITER)
 	{
 		_ = await ReadContentAsync();
 
@@ -65,29 +70,105 @@ public class HttpContentDto
 		{
 			var sb = new StringBuilder();
 
+			var count = 0;
+			if (StringContents != null)
+			{
+				int idx = 0;
+				foreach (var stringContent in StringContents)
+				{
+					count++;
+					sb.AppendLine();
+					sb.AppendLine($"[{count}] ... {STRING_CONTENT}[{idx}]:");
+					sb.AppendLine(contentDelimiter);
+					var content = await stringContent.ToStringAsync();
+					sb.AppendLine(content ?? string.Empty);
+					idx++;
+				}
+			}
+
+			if (JsonContents != null)
+			{
+				int idx = 0;
+				foreach (var jsonContent in JsonContents)
+				{
+					count++;
+					sb.AppendLine();
+					sb.AppendLine($"[{count}] ... {JSON_CONTENT}[{idx}]:");
+					sb.AppendLine(contentDelimiter);
+					var content = await jsonContent.ToStringAsync();
+					sb.AppendLine(content ?? string.Empty);
+					idx++;
+				}
+			}
+
+			if (StreamContents != null)
+			{
+				int idx = 0;
+				foreach (var streamContent in StreamContents)
+				{
+					count++;
+					sb.AppendLine();
+					sb.AppendLine($"[{count}] ... {STREAM_CONTENT}[{idx}]:");
+					sb.AppendLine(contentDelimiter);
+					var content = await streamContent.ToStringAsync();
+					sb.AppendLine(content ?? string.Empty);
+					idx++;
+				}
+			}
+
+			if (ByteArrayContents != null)
+			{
+				int idx = 0;
+				foreach (var byteArrayContent in ByteArrayContents)
+				{
+					count++;
+					sb.AppendLine();
+					sb.AppendLine($"[{count}] ... {BYTE_ARRAY_CONTENT}[{idx}]:");
+					sb.AppendLine(contentDelimiter);
+					var content = await byteArrayContent.ToStringAsync();
+					sb.AppendLine(content ?? string.Empty);
+					idx++;
+				}
+			}
+
+			if (HttpContents != null)
+			{
+				int idx = 0;
+				foreach (var httpContent in HttpContents)
+				{
+					count++;
+					sb.AppendLine();
+					sb.AppendLine($"[{count}] ... {HTTP_CONTENT}[{idx}]:");
+					sb.AppendLine(contentDelimiter);
+					var content = await httpContent.ToStringAsync();
+					sb.AppendLine(content ?? string.Empty);
+					idx++;
+				}
+			}
+
 			return sb.ToString();
 		}
 		else
 		{
 			var stringContent = StringContents?.FirstOrDefault();
 			if (stringContent != null)
-				return stringContent.Content;
+				return await stringContent.ToStringAsync();
 
 			var jsonContent = JsonContents?.FirstOrDefault();
 			if (jsonContent?.Content != null)
-				return jsonContent.Content.ToString();
+				return await jsonContent.ToStringAsync();
 
 			var streamContent = StreamContents?.FirstOrDefault();
 			if (streamContent?.Stream != null)
-				return await streamContent.Stream.ToStringAsync(Encoding.UTF8, true);
+				return await streamContent.ToStringAsync();
 
 			var byteArrayContent = ByteArrayContents?.FirstOrDefault();
 			if (byteArrayContent?.ByteArray != null)
-				return Encoding.UTF8.GetString(byteArrayContent.ByteArray);
+				return await byteArrayContent.ToStringAsync();
 
 			var httpContent = HttpContents?.FirstOrDefault();
 			if (httpContent?.Stream != null)
-				return await httpContent.Stream.ToStringAsync(Encoding.UTF8, true);
+				return await httpContent.ToStringAsync();
 		}
 
 		return null;

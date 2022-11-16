@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Collections;
+using System.Net.Http.Headers;
+using System.Text;
 
 namespace Envelope.NetHttp.Http;
 
@@ -72,6 +74,11 @@ public class JsonContent : ContentBase
 
 		return content;
 	}
+
+	public override Task<string?> ToStringAsync()
+	=> Content != null
+			? Task.FromResult((string?)Content.ToString())
+			: Task.FromResult((string?)null);
 }
 
 public class JsonContent<T> : JsonContent

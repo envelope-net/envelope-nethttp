@@ -11,4 +11,6 @@ public abstract class ContentBase
 	{
 		Headers = new ContentHeaders();
 	}
+
+	public abstract Task<string?> ToStringAsync();
 }
