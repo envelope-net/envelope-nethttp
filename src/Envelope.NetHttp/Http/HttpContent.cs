@@ -1,4 +1,7 @@
-﻿namespace Envelope.NetHttp.Http;
+﻿using Envelope.Extensions;
+using System.Text;
+
+namespace Envelope.NetHttp.Http;
 
 public class HttpContent : ContentBase
 {
@@ -32,4 +35,9 @@ public class HttpContent : ContentBase
 		contentHasBeenRead = true;
 		return this;
 	}
+
+	public override Task<string?> ToStringAsync()
+		=> Stream != null
+			? Stream.ToStringAsync(Encoding.UTF8, true)
+			: Task.FromResult((string?)null);
 }
