@@ -4,6 +4,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Envelope.NetHttp.Http;
 
+#if NET6_0_OR_GREATER
+[Envelope.Serializer.JsonPolymorphicConverter]
+#endif
 public interface IHttpApiClientResponse : IDisposable
 {
 	IHttpApiClientRequest Request { get; }
