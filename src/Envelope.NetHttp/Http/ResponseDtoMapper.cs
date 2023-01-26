@@ -21,7 +21,8 @@ public static class ResponseDtoMapper
 			CorrelationId = correlationId,
 			ExternalCorrelationId = externalCorrelationId,
 			Error = error,
-			ElapsedMilliseconds = elapsedMilliseconds
+			ElapsedMilliseconds = elapsedMilliseconds,
+			ContentType = httpResponse?.Content?.Headers?.ContentType?.ToString()
 		};
 
 		if (httpResponse == null)

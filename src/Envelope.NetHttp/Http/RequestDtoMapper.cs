@@ -27,6 +27,7 @@ public static class RequestDtoMapper
 
 		try { request.Method = httpRequest.Method.Method; } catch { }
 		try { request.Path = httpRequest.RequestUri?.ToString(); } catch { }
+		try { request.ContentType = httpRequest.Content?.Headers?.ContentType?.ToString(); } catch { }
 
 		if (logRequestHeaders)
 		{
