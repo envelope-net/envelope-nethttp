@@ -95,55 +95,60 @@ public abstract class HttpApiClientOptions : IValidable
 		if (handler == null)
 			throw new ArgumentNullException(nameof(handler));
 
-		if (AutomaticDecompression.HasValue)
-			handler.AutomaticDecompression = AutomaticDecompression.Value;
+		var isBrowser = Envelope.Infrastructure.OSPlatformHelper.IsBrowser();
 
-		if (Proxy != null)
-			handler.Proxy = Proxy;
+		if (!isBrowser)
+		{
+			if (AutomaticDecompression.HasValue)
+				handler.AutomaticDecompression = AutomaticDecompression.Value;
 
-		if (UseProxy.HasValue)
-			handler.UseProxy = UseProxy.Value;
+			if (Proxy != null)
+				handler.Proxy = Proxy;
 
-		if (DefaultProxyCredentials != null)
-			handler.DefaultProxyCredentials = DefaultProxyCredentials;
+			if (UseProxy.HasValue)
+				handler.UseProxy = UseProxy.Value;
 
-		if (TrustToAllServerCertificates && RemoteCertificateValidationCallback != null)
-			handler.ServerCertificateCustomValidationCallback = RemoteCertificateValidationCallback!;
+			if (DefaultProxyCredentials != null)
+				handler.DefaultProxyCredentials = DefaultProxyCredentials;
 
-		if (CheckCertificateRevocationList.HasValue)
-			handler.CheckCertificateRevocationList = CheckCertificateRevocationList.Value;
+			if (TrustToAllServerCertificates && RemoteCertificateValidationCallback != null)
+				handler.ServerCertificateCustomValidationCallback = RemoteCertificateValidationCallback!;
 
-		if (!UsesCookieContainerToStoreServerCookies)
-			handler.UseCookies = false;
+			if (CheckCertificateRevocationList.HasValue)
+				handler.CheckCertificateRevocationList = CheckCertificateRevocationList.Value;
 
-		if (UseDefaultCredentials.HasValue)
-			handler.UseDefaultCredentials = UseDefaultCredentials.Value;
+			if (!UsesCookieContainerToStoreServerCookies)
+				handler.UseCookies = false;
 
-		if (CredentialCache != null)
-			handler.Credentials = CredentialCache;
-		else if (Credentials != null)
-			handler.Credentials = Credentials;
+			if (UseDefaultCredentials.HasValue)
+				handler.UseDefaultCredentials = UseDefaultCredentials.Value;
 
-		if (0 < ClientCertificates?.Count)
-			handler.ClientCertificates.AddRange(ClientCertificates.ToArray());
+			if (CredentialCache != null)
+				handler.Credentials = CredentialCache;
+			else if (Credentials != null)
+				handler.Credentials = Credentials;
 
-		if (SendAuthorizationHeaderInRequest)
-			handler.PreAuthenticate = true;
+			if (0 < ClientCertificates?.Count)
+				handler.ClientCertificates.AddRange(ClientCertificates.ToArray());
 
-		if (SslProtocols.HasValue)
-			handler.SslProtocols = SslProtocols.Value;
+			if (SendAuthorizationHeaderInRequest)
+				handler.PreAuthenticate = true;
 
-		if (MaxResponseHeadersLength.HasValue)
-			handler.MaxResponseHeadersLength = MaxResponseHeadersLength.Value;
+			if (SslProtocols.HasValue)
+				handler.SslProtocols = SslProtocols.Value;
+
+			if (MaxResponseHeadersLength.HasValue)
+				handler.MaxResponseHeadersLength = MaxResponseHeadersLength.Value;
+
+			if (MaxConnectionsPerServer.HasValue)
+				handler.MaxConnectionsPerServer = MaxConnectionsPerServer.Value;
+
+			if (MaxAutomaticRedirections.HasValue)
+				handler.MaxAutomaticRedirections = MaxAutomaticRedirections.Value;
+		}
 
 		if (MaxRequestContentBufferSize.HasValue)
 			handler.MaxRequestContentBufferSize = MaxRequestContentBufferSize.Value;
-
-		if (MaxConnectionsPerServer.HasValue)
-			handler.MaxConnectionsPerServer = MaxConnectionsPerServer.Value;
-
-		if (MaxAutomaticRedirections.HasValue)
-			handler.MaxAutomaticRedirections = MaxAutomaticRedirections.Value;
 
 		if (AllowAutoRedirect.HasValue)
 			handler.AllowAutoRedirect = AllowAutoRedirect.Value;
