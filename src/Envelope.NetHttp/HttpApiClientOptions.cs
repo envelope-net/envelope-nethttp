@@ -241,27 +241,19 @@ public abstract class HttpApiClientOptions : IValidable
 		CredentialCache.Add(new Uri(uriPrefix), authenticationType.ToString(), credential);
 	}
 
-	public List<IValidationMessage>? Validate(string? propertyPrefix = null, List<IValidationMessage>? parentErrorBuffer = null, Dictionary<string, object>? validationContext = null)
+	public List<IValidationMessage>? Validate(
+		string? propertyPrefix = null,
+		ValidationBuilder? validationBuilder = null,
+		Dictionary<string, object>? globalValidationContext = null,
+		Dictionary<string, object>? customValidationContext = null)
 	{
-		//if (string.IsNullOrWhiteSpace(BaseAddress))
-		//{
-		//	parentErrorBuffer ??= new List<IValidationMessage>();
-		//	parentErrorBuffer.Add(ValidationMessageFactory.Error($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(BaseAddress))} == null"));
-		//}
+		validationBuilder ??= new ValidationBuilder();
+		validationBuilder.SetValidationMessages(propertyPrefix, globalValidationContext)
+			.IfNullOrWhiteSpace(ClientName)
+			.If(Credentials != null && CredentialCache != null)
+			;
 
-		if (string.IsNullOrWhiteSpace(ClientName))
-		{
-			parentErrorBuffer ??= new List<IValidationMessage>();
-			parentErrorBuffer.Add(ValidationMessageFactory.Error($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(ClientName))} == null"));
-		}
-
-		if (Credentials != null && CredentialCache != null)
-		{
-			parentErrorBuffer ??= new List<IValidationMessage>();
-			parentErrorBuffer.Add(ValidationMessageFactory.Error($"{StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(Credentials))} != null && {StringHelper.ConcatIfNotNullOrEmpty(propertyPrefix, ".", nameof(CredentialCache))} != null"));
-		}
-
-		return parentErrorBuffer;
+		return validationBuilder.Build();
 	}
 
 	public virtual IRequestResponseLogger? GetLogger(string? uri, IServiceProvider? serviceProvider = null)
