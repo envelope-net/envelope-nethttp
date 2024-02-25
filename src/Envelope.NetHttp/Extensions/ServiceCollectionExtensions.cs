@@ -7,7 +7,7 @@ namespace Envelope.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-	public static IServiceCollection AddHttpApiClient<TClient, TOptions>(this IServiceCollection services,
+	public static IServiceCollection AddHttpApiClient<TClient, TOptions, TCorrelation>(this IServiceCollection services,
 		Action<TOptions>? configureOptions,
 		Action<HttpClient>? configureClient = null,
 		Action<IHttpClientBuilder>? configureHttpClientBuilder = null)
@@ -26,7 +26,7 @@ public static class ServiceCollectionExtensions
 			configureOptions?.Invoke(opt);
 		});
 
-		services.TryAddTransient<LogHandler<TOptions>>();
+		services.TryAddTransient<LogHandler<TOptions, TCorrelation>>();
 		services.TryAddTransient<PolicyHandler<TOptions>>();
 
 		var httpClientBuilder =
@@ -51,7 +51,7 @@ public static class ServiceCollectionExtensions
 
 		//na konci, aby to bol najviac inner handler
 		httpClientBuilder
-			.AddHttpMessageHandler<LogHandler<TOptions>>();
+			.AddHttpMessageHandler<LogHandler<TOptions, TCorrelation>>();
 
 		if (options.ApplyToHttpClientHandler)
 		{

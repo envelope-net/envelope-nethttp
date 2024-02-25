@@ -6,7 +6,11 @@ namespace Envelope.NetHttp;
 
 public interface IRequestResponseLogger
 {
-	Task<Guid?> LogRequestAsync<TOptions>(
+}
+
+public interface IRequestResponseLogger<T> : IRequestResponseLogger
+{
+	Task<T> LogRequestAsync<TOptions>(
 		RequestDto request,
 		HttpContentDto requestContent,
 		ITraceInfo traceInfo,
@@ -16,7 +20,7 @@ public interface IRequestResponseLogger
 		where TOptions : HttpApiClientOptions;
 
 	Task LogResponseAsync<TOptions>(
-		Guid requestIdentifier,
+		T requestIdentifier,
 		ResponseDto response,
 		HttpContentDto responseContent,
 		ITraceInfo traceInfo,

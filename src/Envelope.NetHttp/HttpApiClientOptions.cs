@@ -63,8 +63,8 @@ public abstract class HttpApiClientOptions : IValidable
 	public Func<object, X509Certificate, X509Chain, SslPolicyErrors, bool>? RemoteCertificateValidationCallback { get; set; }
 		= DefaultServerCertificateValidation.ServerCertificateValidation;
 
-	public void SetDefaultRequestResponseLogger<T>()
-		where T : IRequestResponseLogger
+	public void SetDefaultRequestResponseLogger<T, TCorrelation>()
+		where T : IRequestResponseLogger<TCorrelation>
 	{
 		_defaultRequestResponseLoggerType = typeof(T);
 	}
@@ -256,7 +256,7 @@ public abstract class HttpApiClientOptions : IValidable
 		return validationBuilder.Build();
 	}
 
-	public virtual IRequestResponseLogger? GetLogger(string? uri, IServiceProvider? serviceProvider = null)
+	public virtual IRequestResponseLogger<TCorrelation>? GetLogger<TCorrelation>(string? uri, IServiceProvider? serviceProvider = null)
 	{
 		if (serviceProvider != null)
 		{
@@ -264,11 +264,11 @@ public abstract class HttpApiClientOptions : IValidable
 			{
 				var requestResponseLogger = serviceProvider.GetService(_defaultRequestResponseLoggerType);
 				if (requestResponseLogger != null)
-					return (IRequestResponseLogger)requestResponseLogger;
+					return (IRequestResponseLogger<TCorrelation>)requestResponseLogger;
 			}
 			else
 			{
-				var requestResponseLogger = serviceProvider.GetService<IRequestResponseLogger>();
+				var requestResponseLogger = serviceProvider.GetService<IRequestResponseLogger<TCorrelation>>();
 				if (requestResponseLogger != null)
 					return requestResponseLogger;
 			}
@@ -285,10 +285,10 @@ public abstract class HttpApiClientOptions : IValidable
 
 		var key = UriLoggers.Keys.FirstOrDefault(x => uri!.StartsWith(x));
 		if (!string.IsNullOrWhiteSpace(key) && UriLoggers.TryGetValue(key, out var logger))
-			return logger;
+			return logger as IRequestResponseLogger<TCorrelation>;
 
 		if (UriLoggers.TryGetValue("*", out var defaultLogger))
-			return defaultLogger;
+			return defaultLogger as IRequestResponseLogger<TCorrelation>;
 
 		return null;
 	}

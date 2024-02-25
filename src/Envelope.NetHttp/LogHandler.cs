@@ -10,7 +10,7 @@ using Envelope.Trace;
 namespace Envelope.NetHttp;
 
 /// <inheritdoc />
-internal class LogHandler<TOptions> : DelegatingHandler
+internal class LogHandler<TOptions, TCorrelation> : DelegatingHandler
 	where TOptions : HttpApiClientOptions
 {
 #if NET6_0_OR_GREATER
@@ -21,7 +21,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 	private readonly TOptions _options;
 	private readonly ILogger _errorLogger;
 
-	public LogHandler(IOptions<TOptions> options, IServiceProvider serviceProvider, ILogger<LogHandler<TOptions>> errorLogger)
+	public LogHandler(IOptions<TOptions> options, IServiceProvider serviceProvider, ILogger<LogHandler<TOptions, TCorrelation>> errorLogger)
 	{
 		_options = options?.Value ?? throw new ArgumentNullException(nameof(options));
 		_errorLogger = errorLogger ?? throw new ArgumentNullException(nameof(errorLogger));
@@ -43,7 +43,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 			var exception = $"{nameof(serviceProvider)} == null";
 			_errorLogger.LogErrorMessage(
 				_options.SourceSystemName,
-				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)}"),
+				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions, TCorrelation>)}.{nameof(SendAsync)}"),
 				true);
 
 			throw new InvalidOperationException(exception);
@@ -54,7 +54,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 			var exception = $"{nameof(traceInfo)} == null";
 			_errorLogger.LogErrorMessage(
 				_options.SourceSystemName,
-				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)}"),
+				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions, TCorrelation>)}.{nameof(SendAsync)}"),
 				true);
 
 			throw new InvalidOperationException(exception);
@@ -65,7 +65,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 			var exception = $"{nameof(serviceProvider)} == null";
 			_errorLogger.LogErrorMessage(
 				_options.SourceSystemName,
-				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)}"),
+				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions, TCorrelation>)}.{nameof(SendAsync)}"),
 				true);
 
 			throw new InvalidOperationException(exception);
@@ -76,7 +76,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 			var exception = $"{nameof(traceInfo)} == null";
 			_errorLogger.LogErrorMessage(
 				_options.SourceSystemName,
-				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)}"),
+				x => x.InternalMessage(exception).Detail($"{nameof(LogHandler<TOptions, TCorrelation>)}.{nameof(SendAsync)}"),
 				true);
 
 			throw new InvalidOperationException(exception);
@@ -85,8 +85,8 @@ internal class LogHandler<TOptions> : DelegatingHandler
 
 		traceInfo = TraceInfo.Create(traceInfo);
 
-		Guid? requestLogIdentifier = null;
-		var logger = _options.GetLogger(uri, serviceProvider);
+		TCorrelation requestLogIdentifier = default;
+		var logger = _options.GetLogger<TCorrelation>(uri, serviceProvider);
 		if (logger != null)
 		{
 			var requestDto = await RequestDtoMapper.MapAsync(request, null, null, null, true, false, false, cancellationToken).ConfigureAwait(false);
@@ -106,9 +106,9 @@ internal class LogHandler<TOptions> : DelegatingHandler
 			{
 				var applicationCoxntext = serviceProvider.GetService<IApplicationContext>();
 				if (applicationCoxntext != null)
-					_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogRequestAsync)}"), true);
+					_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions, TCorrelation>)}.{nameof(SendAsync)} - {nameof(logger.LogRequestAsync)}"), true);
 				else
-					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogRequestAsync)}"), true);
+					_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions, TCorrelation>)}.{nameof(SendAsync)} - {nameof(logger.LogRequestAsync)}"), true);
 			}
 
 			sw = Stopwatch.StartNew();
@@ -120,7 +120,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 		{
 			response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-			if (logger != null && requestLogIdentifier.HasValue)
+			if (logger != null && requestLogIdentifier != null)
 			{
 				sw?.Stop();
 
@@ -130,7 +130,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				try
 				{
 					await logger.LogResponseAsync(
-						requestLogIdentifier.Value,
+						requestLogIdentifier,
 						responseDto,
 						httpContentDto,
 						traceInfo,
@@ -142,9 +142,9 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				{
 					var applicationCoxntext = serviceProvider.GetService<IApplicationContext>();
 					if (applicationCoxntext != null)
-						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
+						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(ex).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions, TCorrelation>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
 					else
-						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
+						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(ex).Detail($"{nameof(LogHandler<TOptions, TCorrelation>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
 				}
 			}
 
@@ -154,7 +154,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 		{
 			error = ex.ToStringTrace();
 
-			if (logger != null && requestLogIdentifier.HasValue)
+			if (logger != null && requestLogIdentifier != null)
 			{
 				sw?.Stop();
 
@@ -164,7 +164,7 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				try
 				{
 					await logger.LogResponseAsync(
-						requestLogIdentifier.Value,
+						requestLogIdentifier,
 						responseDto,
 						httpContentDto,
 						traceInfo,
@@ -176,9 +176,9 @@ internal class LogHandler<TOptions> : DelegatingHandler
 				{
 					var applicationCoxntext = serviceProvider.GetService<IApplicationContext>();
 					if (applicationCoxntext != null)
-						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(exLog).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
+						_errorLogger.LogErrorMessage(applicationCoxntext, x => x.ExceptionInfo(exLog).Detail($"{_options.SourceSystemName}: {nameof(LogHandler<TOptions, TCorrelation>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
 					else
-						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(exLog).Detail($"{nameof(LogHandler<TOptions>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
+						_errorLogger.LogErrorMessage(_options.SourceSystemName, x => x.ExceptionInfo(exLog).Detail($"{nameof(LogHandler<TOptions, TCorrelation>)}.{nameof(SendAsync)} - {nameof(logger.LogResponseAsync)}"), true);
 				}
 			}
 

@@ -147,11 +147,51 @@ public class HttpApiClientRequest : IHttpApiClientRequest
 	}
 
 	public string? GetRequestUri()
-		=> string.IsNullOrWhiteSpace(BaseAddress)
-			? UriHelper.Combine($"{RelativePath}{QueryString}")
-			: UriHelper.Combine(
-				BaseAddress,
-				$"{RelativePath}{QueryString}");
+	{
+		if (string.IsNullOrWhiteSpace(BaseAddress))
+		{
+			if (string.IsNullOrWhiteSpace(RelativePath))
+			{
+				return QueryString;
+			}
+			else
+			{
+				if (string.IsNullOrWhiteSpace(QueryString))
+				{
+					return RelativePath;
+				}
+				else
+				{
+					return $"{RelativePath}{QueryString}";
+				}
+			}
+		}
+		else
+		{
+			if (string.IsNullOrWhiteSpace(RelativePath))
+			{
+				if (string.IsNullOrWhiteSpace(QueryString))
+				{
+					return BaseAddress;
+				}
+				else
+				{
+					return $"{BaseAddress}{QueryString}";
+				}
+			}
+			else
+			{
+				if (string.IsNullOrWhiteSpace(QueryString))
+				{
+					return UriHelper.Combine(BaseAddress, QueryString);
+				}
+				else
+				{
+					return UriHelper.Combine(BaseAddress, $"{RelativePath}{QueryString}");
+				}
+			}
+		}
+	}
 
 	public System.Net.Http.HttpContent? ToHttpContent()
 	{
