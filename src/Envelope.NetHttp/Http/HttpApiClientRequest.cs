@@ -183,7 +183,7 @@ public class HttpApiClientRequest : IHttpApiClientRequest
 			{
 				if (string.IsNullOrWhiteSpace(QueryString))
 				{
-					return UriHelper.Combine(BaseAddress, QueryString);
+					return UriHelper.Combine(BaseAddress, RelativePath);
 				}
 				else
 				{
